@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 小组件元信息：2x2 桌面格子；updatePeriodMillis 是系统最小 30 分钟的兜底刷新，
+     实际主要刷新点在 App 内（保存后/回到主页时主动刷新） -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_today"
+    android:resizeMode="horizontal|vertical"
+    android:description="@string/widget_today_label" />

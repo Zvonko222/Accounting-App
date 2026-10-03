@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 品牌色：深青绿（钱的颜色，沉稳不刺眼，适合大龄用户长时间查看） -->
+    <color name="brand_primary">#00695C</color>
+    <color name="brand_primary_dark">#004D40</color>
+    <color name="brand_primary_light">#B2DFDB</color>
+
+    <!-- 语义色：收入绿、支出红、预警橙，全 App 统一 -->
+    <color name="money_in">#1B7E4A</color>
+    <color name="money_out">#B3261E</color>
+    <color name="warning">#E65100</color>
+
+    <color name="text_primary">#1C1B1F</color>
+    <color name="text_secondary">#5F6368</color>
+    <color name="bg_page">#F6F7F8</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="divider">#E0E0E0</color>
+</resources>

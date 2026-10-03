@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AccountingSyncServer</RootNamespace>
+  </PropertyGroup>
+
+  <!-- 零第三方依赖：存储用 JSON 文件（单店规模足够）。
+       将来需要 SQL 级查询/多店并发时，再引入数据库驱动替换存储层，
+       API 协议不变，客户端无需改动。 -->
+
+</Project>

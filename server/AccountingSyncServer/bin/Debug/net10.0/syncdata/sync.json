@@ -1,0 +1,1 @@
+[{"DeviceId":"test-device-0001","Table":"products","RowId":"row-abc","UpdatedAt":1759500000000,"IsDeleted":false,"Payload":"{\u0022id\u0022:\u0022row-abc\u0022,\u0022name\u0022:\u0022curl????\u0022,\u0022salePriceCents\u0022:500}","StoredAt":1791052894859}]

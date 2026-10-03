@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider 路径声明：拍照导入的照片临时文件放在 cacheDir/ocr/ 下 -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path
+        name="ocr_images"
+        path="ocr/" />
+</paths>

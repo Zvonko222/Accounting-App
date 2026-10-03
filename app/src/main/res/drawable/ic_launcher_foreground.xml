@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 前景：白色账本卡片 + 品牌色柱状图（销售额上升的意象）。
+     自适应图标安全区：中央 66dp 内，四周留给系统遮罩动画 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 账本卡片 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,32 L76,32 A4,4 0 0 1 80,36 L80,72 A4,4 0 0 1 76,76 L32,76 A4,4 0 0 1 28,72 L28,36 A4,4 0 0 1 32,32 Z" />
+    <!-- 柱状图四根柱 -->
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M36,60 L43,60 L43,70 L36,70 Z" />
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M47,53 L54,53 L54,70 L47,70 Z" />
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M58,46 L65,46 L65,70 L58,70 Z" />
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M69,38 L76,38 L76,70 L69,70 Z" />
+</vector>
