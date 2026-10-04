@@ -20,4 +20,8 @@ public class SaleWithSummary {
 
     /** 有效明细行数 */
     public int itemCount;
+
+    /** 最近售后事件类型与差额 */
+    public int latestEventType;
+    public long latestEventDifferenceCents;
 }

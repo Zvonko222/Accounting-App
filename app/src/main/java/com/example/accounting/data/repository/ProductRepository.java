@@ -143,11 +143,12 @@ public class ProductRepository {
                     if (product == null) {
                         throw new IllegalStateException("商品不存在");
                     }
-                    long changeMilli = actualQuantityMilli - product.stockQuantityMilli;
+                    long safeActualQuantityMilli = Math.max(actualQuantityMilli, 0);
+                    long changeMilli = safeActualQuantityMilli - product.stockQuantityMilli;
                     if (changeMilli == 0) {
                         return;
                     }
-                    product.stockQuantityMilli = actualQuantityMilli;
+                    product.stockQuantityMilli = safeActualQuantityMilli;
                     product.markPending();
                     productDao.update(product);
 
@@ -161,6 +162,37 @@ public class ProductRepository {
                     movement.note = (reason == null || reason.trim().isEmpty())
                             ? "盘点修正" : reason.trim();
                     stockMovementDao.insert(movement);
+                });
+                notifySuccess(callback);
+            } catch (Exception e) {
+                notifyError(callback, e.getMessage());
+            }
+        });
+    }
+
+    public void createTemporaryProduct(String name, long salePriceCents,
+                                       SaveCallback callback) {
+        writeExecutor.execute(() -> {
+            try {
+                database.runInTransaction(() -> {
+                    String categoryName = "临时商品";
+                    Category category = categoryDao.findActiveByName(categoryName);
+                    if (category == null) {
+                        category = new Category();
+                        category.id = UUID.randomUUID().toString();
+                        category.initTimestamps();
+                        category.name = categoryName;
+                        category.sortOrder = categoryDao.listActive().size();
+                        categoryDao.insert(category);
+                    }
+                    Product product = new Product();
+                    product.id = UUID.randomUUID().toString();
+                    product.initTimestamps();
+                    product.name = name.trim();
+                    product.categoryId = category.id;
+                    product.salePriceCents = Math.max(0, salePriceCents);
+                    product.unit = "个";
+                    productDao.insert(product);
                 });
                 notifySuccess(callback);
             } catch (Exception e) {

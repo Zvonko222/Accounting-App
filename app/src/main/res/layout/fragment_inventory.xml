@@ -21,17 +21,53 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <EditText
-            android:id="@+id/search_input"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="8dp"
-            android:hint="@string/search_hint"
-            android:inputType="text"
-            android:maxLines="1"
-            android:textSize="16sp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/search_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:hint="@string/search_hint"
+                android:inputType="text"
+                android:maxLines="1"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/btn_manage_category"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="16dp"
+                android:text="@string/category_manage"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+    <!-- 分类筛选：横向滑动，第一个固定"全部" -->
+    <HorizontalScrollView
+        android:id="@+id/category_filter_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_category"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            app:chipSpacingHorizontal="6dp"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true" />
+    </HorizontalScrollView>
+
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/product_list"

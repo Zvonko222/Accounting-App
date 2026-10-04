@@ -1,7 +1,9 @@
 package com.example.accounting.ui.settings;
 
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -85,9 +87,14 @@ public class SettingsFragment extends Fragment {
                 "sales_" + TimeUtil.formatForFileName(System.currentTimeMillis()) + ".csv"));
 
         binding.btnRestoreBackup.setOnClickListener(v ->
-                restoreLauncher.launch(new String[]{"*/*"}));
+                restoreLauncher.launch(new String[]{"application/octet-stream", "application/x-sqlite3",
+                        "application/vnd.sqlite3", "application/x-sqlite"}));
 
-        binding.btnCategoryManage.setOnClickListener(v -> showCategoryManageDialog());
+        binding.btnCategoryManage.setOnClickListener(v ->
+                com.example.accounting.ui.common.CategoryManageDialog.show(this,
+                        ((com.example.accounting.AccountingApp) requireActivity().getApplication())
+                                .getCategoryRepository(),
+                        viewModel.getCategories()));
 
         // 引导把"今日经营"小组件钉到桌面（26+ 系统支持一键确认，旧系统给文字指引）
         binding.btnAddWidget.setOnClickListener(v -> {
@@ -150,6 +157,9 @@ public class SettingsFragment extends Fragment {
         viewModel.getPendingCount().observe(getViewLifecycleOwner(), c -> updateSyncStatusText(null));
 
         viewModel.getLastBackupTime().observe(getViewLifecycleOwner(), this::showLastBackup);
+        viewModel.getBackupSummary().observe(getViewLifecycleOwner(), summary -> {
+            if (summary != null) binding.textBackupSummary.setText(summary);
+        });
     }
 
     /** 三个 LiveData 任一变化都重建状态行文本 */
@@ -178,81 +188,11 @@ public class SettingsFragment extends Fragment {
         return (androidx.appcompat.app.AppCompatActivity) requireActivity();
     }
 
-    /** 分类管理弹窗：输入新分类 + 列表停用。LiveData 一直在弹窗生命周期内观察 */
-    private void showCategoryManageDialog() {
-        View contentView = getLayoutInflater()
-                .inflate(R.layout.dialog_category_manage, null, false);
-        androidx.recyclerview.widget.RecyclerView recycler =
-                contentView.findViewById(R.id.category_list);
-        android.widget.EditText nameInput =
-                contentView.findViewById(R.id.input_category_name);
-
-        CategoryManageAdapter adapter = new CategoryManageAdapter(this::confirmDisableCategory);
-        recycler.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(requireContext()));
-        recycler.setAdapter(adapter);
-        viewModel.getCategories().observe(getViewLifecycleOwner(), adapter::submitList);
-
-        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.category_manage)
-                .setView(contentView)
-                .setPositiveButton(R.string.close, null)
-                .create();
-
-        contentView.findViewById(R.id.btn_add_category).setOnClickListener(v -> {
-            String name = String.valueOf(nameInput.getText()).trim();
-            if (name.isEmpty()) {
-                nameInput.setError(getString(R.string.name_required));
-                return;
-            }
-            viewModel.addCategory(name, new com.example.accounting.data.repository.SaveCallback() {
-                @Override
-                public void onSuccess() {
-                    Toast.makeText(requireContext(),
-                            R.string.category_added, Toast.LENGTH_SHORT).show();
-                    nameInput.setText("");
-                }
-
-                @Override
-                public void onError(String message) {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
-
-        dialog.show();
-        // 关弹窗时取消观察
-        dialog.setOnDismissListener(d ->
-                viewModel.getCategories().removeObservers(getViewLifecycleOwner()));
-    }
-
-    /** 停用分类是软删除、可逆性差（同名单会被唯一约束挡住），加一道确认 */
-    private void confirmDisableCategory(com.example.accounting.data.db.entity.Category category) {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setMessage(getString(R.string.disable_confirm) + "\n（" + category.name + "）")
-                .setPositiveButton(R.string.confirm, (dialog, which) ->
-                        viewModel.disableCategory(category.id,
-                                new com.example.accounting.data.repository.SaveCallback() {
-                                    @Override
-                                    public void onSuccess() {
-                                        Toast.makeText(requireContext(),
-                                                R.string.category_disabled,
-                                                Toast.LENGTH_SHORT).show();
-                                    }
-
-                                    @Override
-                                    public void onError(String message) {
-                                        Toast.makeText(requireContext(), message,
-                                                Toast.LENGTH_LONG).show();
-                                    }
-                                }))
-                .setNegativeButton(R.string.cancel, null)
-                .show();
-    }
-
     @Override
     public void onResume() {
         super.onResume();
         viewModel.reloadLastBackupTime();
+        viewModel.reloadBackupSummary();
         viewModel.loadSyncConfig(requireContext());
     }
 
@@ -267,8 +207,11 @@ public class SettingsFragment extends Fragment {
 
     /** 恢复前的强确认：这一步覆盖当前全部数据 */
     private void confirmRestore(Uri uri) {
+        String location = getBackupLocation(uri);
+        String message = getString(R.string.backup_restore_confirm)
+                + "\n\n" + location;
         new MaterialAlertDialogBuilder(requireContext())
-                .setMessage(R.string.backup_restore_confirm)
+                .setMessage(message)
                 .setPositiveButton(R.string.confirm, (dialog, which) ->
                         viewModel.restoreBackup(uri, new BackupManager.BackupCallback() {
                             @Override
@@ -290,6 +233,24 @@ public class SettingsFragment extends Fragment {
                         }))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    private String getBackupLocation(Uri uri) {
+        String name = null;
+        Cursor cursor = requireContext().getContentResolver().query(uri,
+                new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null);
+        if (cursor != null) {
+            try {
+                if (cursor.moveToFirst()) {
+                    name = cursor.getString(cursor.getColumnIndexOrThrow(
+                            OpenableColumns.DISPLAY_NAME));
+                }
+            } finally {
+                cursor.close();
+            }
+        }
+        String displayName = name == null || name.trim().isEmpty() ? "未命名文件" : name;
+        return "文件：" + displayName + "\n位置：" + uri;
     }
 
     /** 备份相关操作统一 Toast 反馈 */
@@ -315,3 +276,5 @@ public class SettingsFragment extends Fragment {
         binding = null;
     }
 }
+
+

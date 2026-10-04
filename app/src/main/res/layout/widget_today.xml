@@ -39,26 +39,45 @@
         android:layout_marginTop="8dp"
         android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/widget_btn_sale"
-            android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/widget_btn"
-            android:text="@string/btn_record_sale"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/widget_btn_purchase"
-            android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            android:background="@drawable/widget_btn"
-            android:text="@string/btn_record_purchase"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp" />
+            <Button
+                android:id="@+id/widget_btn_sale"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/widget_btn"
+                android:text="@string/widget_btn_sale"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/widget_btn_expense"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:background="@drawable/widget_btn"
+                android:text="@string/widget_btn_expense"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/widget_btn_deliver"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:background="@drawable/widget_btn"
+                android:text="@string/widget_btn_deliver"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

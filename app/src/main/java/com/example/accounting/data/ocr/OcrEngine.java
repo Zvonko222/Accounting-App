@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -18,6 +19,10 @@ import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -59,6 +64,7 @@ public class OcrEngine {
                 postError(callback, "无法读取图片");
                 return;
             }
+            bitmap = enhanceForOcr(bitmap);
             android.util.Log.i(TAG, "解码完成 " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
             TextRecognizer recognizer = TextRecognition.getClient(
@@ -81,16 +87,18 @@ public class OcrEngine {
 
     /** 从 ML Kit 结果里按行取原文（保持单据的行结构，解析器按行工作） */
     private static List<String> extractLines(Text text) {
-        List<String> lines = new ArrayList<>();
+        List<Text.Line> detectedLines = new ArrayList<>();
         for (Text.TextBlock block : text.getTextBlocks()) {
-            for (Text.Line line : block.getLines()) {
-                String raw = line.getText();
-                if (raw != null && !raw.trim().isEmpty()) {
-                    lines.add(raw);
-                }
-            }
+            detectedLines.addAll(block.getLines());
         }
-        return lines;
+        Collections.sort(detectedLines, Comparator.comparingInt(line ->
+                line.getBoundingBox() == null ? Integer.MAX_VALUE : line.getBoundingBox().top));
+        Set<String> unique = new LinkedHashSet<>();
+        for (Text.Line line : detectedLines) {
+            String raw = line.getText();
+            if (raw != null && !raw.trim().isEmpty()) unique.add(raw.trim());
+        }
+        return new ArrayList<>(unique);
     }
 
     /**
@@ -137,6 +145,38 @@ public class OcrEngine {
         }
     }
 
+    /**
+     * 识别前的图像增强：转灰度 + 轻微对比度拉伸。
+     * 拍照的单据常有偏色和低对比（灰底灰字），识别率明显受影响；
+     * 灰度化去掉颜色干扰，对比度拉伸把浅淡字迹拉开。
+     * 用 ColorMatrix 一次绘制完成，避免逐像素处理的大图卡顿。
+     */
+    private static Bitmap enhanceForOcr(Bitmap source) {
+        // 灰度 + 对比度：新灰度 = (原灰度 - 128) * 1.15 + 140（黑更黑白更白）
+        android.graphics.ColorMatrix gray = new android.graphics.ColorMatrix();
+        gray.setSaturation(0);
+        android.graphics.ColorMatrix contrast = new android.graphics.ColorMatrix(
+                new float[]{
+                        1.15f, 0, 0, 0, -16f,
+                        0, 1.15f, 0, 0, -16f,
+                        0, 0, 1.15f, 0, -16f,
+                        0, 0, 0, 1, 0});
+        gray.postConcat(contrast);
+        android.graphics.ColorMatrixColorFilter filter =
+                new android.graphics.ColorMatrixColorFilter(gray);
+
+        Bitmap output = Bitmap.createBitmap(
+                source.getWidth(), source.getHeight(), Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(output);
+        android.graphics.Paint paint = new android.graphics.Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColorFilter(filter);
+        canvas.drawBitmap(source, 0, 0, paint);
+        if (output != source) {
+            source.recycle();
+        }
+        return output;
+    }
+
     private static int computeInSampleSize(int width, int height) {
         int sampleSize = 1;
         int larger = Math.max(width, height);
@@ -171,3 +211,4 @@ public class OcrEngine {
         mainHandler.post(() -> callback.onError(message));
     }
 }
+

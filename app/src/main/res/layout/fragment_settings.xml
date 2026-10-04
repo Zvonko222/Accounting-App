@@ -60,6 +60,14 @@
                     android:layout_marginTop="6dp"
                     android:textColor="@color/text_primary"
                     android:textSize="14sp" />
+                <TextView
+                    android:id="@+id/text_backup_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/backup_summary_loading"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_backup_now"
@@ -259,3 +267,4 @@
 
     </LinearLayout>
 </ScrollView>
+

@@ -50,6 +50,10 @@ public class PurchaseEditActivity extends AppCompatActivity
 
     private List<Product> currentProducts;
 
+    /** 分类筛选 + 最新商品列表（分类切换时重新过滤网格） */
+    private com.example.accounting.ui.common.CategoryFilter categoryFilter;
+    private List<Product> latestProducts;
+
     /** 修改模式：被修改的进货单 id；开新单时为 null */
     private String editingPurchaseId;
 
@@ -84,6 +88,12 @@ public class PurchaseEditActivity extends AppCompatActivity
         cartAdapter = new PurchaseCartAdapter(this);
         binding.cartList.setLayoutManager(new LinearLayoutManager(this));
         binding.cartList.setAdapter(cartAdapter);
+
+        categoryFilter = new com.example.accounting.ui.common.CategoryFilter(
+                binding.chipGroupCategory, () ->
+                        productGridAdapter.submitList(categoryFilter.apply(latestProducts)));
+        viewModel.getCategories().observe(this,
+                categories -> categoryFilter.setCategories(categories));
 
         subscribe();
 
@@ -141,7 +151,8 @@ public class PurchaseEditActivity extends AppCompatActivity
         LiveData<List<Product>> productsLive = viewModel.getProducts();
         productsLive.observe(this, products -> {
             currentProducts = products;
-            productGridAdapter.submitList(products);
+            latestProducts = products;
+            productGridAdapter.submitList(categoryFilter.apply(products));
             refreshCart();
         });
         viewModel.getLines().observe(this, lines -> refreshCart());

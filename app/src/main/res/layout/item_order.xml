@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginTop="6dp"
+    android:layout_marginBottom="6dp"
+    app:cardBackgroundColor="@color/bg_card"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/order_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/order_customer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+                        <TextView
+                android:id="@+id/order_items"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/order_pay_method"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/order_discount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/money_out"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/order_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:visibility="gone" />
+<TextView
+    android:id="@+id/order_address"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="@color/text_secondary"
+    android:textSize="13sp"
+    android:visibility="gone" />
+
+<TextView
+    android:id="@+id/order_phone"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="@color/text_secondary"
+    android:textSize="13sp"
+    android:visibility="gone" />
+
+<TextView
+     android:id="@+id/order_delivered_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/order_total"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:textColor="@color/money_in"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+             android:id="@+id/btn_deliver"
+             android:layout_width="wrap_content"
+             android:layout_height="44dp"
+             android:text="@string/orders_deliver"
+             android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+             android:id="@+id/btn_order_event"
+             style="@style/Widget.Material3.Button.TextButton"
+             android:layout_width="wrap_content"
+             android:layout_height="44dp"
+             android:text="@string/order_event_short"
+             android:textSize="13sp" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
+
+

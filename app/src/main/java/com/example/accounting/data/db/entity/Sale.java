@@ -38,4 +38,16 @@ public class Sale extends SyncEntity {
     public String customerName;
 
     public String note;
+
+    /** 交付状态：0=无需交付（堂食/自提） 1=待交付（外卖/预订） 2=已交付 */
+    public int deliveryStatus;
+
+    /** 交付时间（毫秒），未交付为 null */
+    public Long deliveredAt;
+
+    /** 货物交付地址，支持换行或分隔符填写多个地址 */
+    public String deliveryAddress;
+
+    /** 联系电话，支持换行或分隔符填写多个号码 */
+    public String deliveryPhone;
 }

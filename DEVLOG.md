@@ -291,6 +291,36 @@
 
 ---
 
+## 补丁 8 — 六项体验反馈修复
+
+1. **状态栏遮挡**：targetSdk 35+ 强制 edge-to-edge，五个页面根布局加 `fitsSystemWindows`（Insets 监听方案在 FragmentContainerView 上不生效，声明式方案稳定，截图验证通过）。
+2. **分类自定义触手可及**：商品编辑页分类下拉旁加"+"按钮，弹窗输入即可新增并自动选中（不必去设置页）。
+3. **开单/进货页商品按分类筛选**：网格上方一排"全部 / 各分类"Chip（`ui/common/CategoryFilter` 三页共用同一逻辑），货物多了好找货。
+4. **库存页同样加分类筛选**，与搜索叠加生效。
+5. **"作废"按钮从流水列表移除**：移入单据详情弹窗（点单 → 修改/作废/关闭），列表不再出现让人生疑的"作废"字样；作废仍有二次确认。
+6. **拍照识别增强**：解析器 v2——支持"数量 品名 价格"顺序、"3.5x2"写法、独立单位字（元/瓶/kg…）剔除、带规格品名（可乐500ml）；单个整数按数量处理（价格未知标无效待补）；只有品名没有数字的行保留为无效行而非直接丢弃；确认页新增**原始识别文本**展示，识别不准可对照修改。OcrLineParser 测试 16 个全绿。
+7. **统计页扩充**：新增"分类销售额（本月）"榜（JOIN 商品分类聚合，未分类归入"未分类"）+ 毛利率 + 日均销售额。
+
+**Files**：`util/InsetsUtil.java`、5 个布局根、`ui/common/CategoryFilter.java`（新）、`fragment_inventory/activity_sale_edit/activity_purchase_edit.xml`（筛选条）、`SaleEditActivity/PurchaseEditActivity/InventoryFragment/InventoryViewModel`（筛选与快捷新增）、`ProductEditActivity/activity_product_edit.xml`、`item_sale/item_purchase.xml + SaleListAdapter/PurchaseListAdapter/SalesFragment`（作废迁移）、`OcrLineParser.java + OcrLineParserTest`（v2，16 用例）、`OcrImportActivity/activity_ocr_import.xml`（原始文本）、`StatisticsDao/StatisticsViewModel/StatisticsFragment/CategorySalesAdapter/CategorySales.java`（统计扩充）。
+
+**How to test**：打开任一页面看状态栏不再遮挡；库存/开单/进货页点分类 Chip 过滤；商品编辑页点"+"加分类自动选中；点流水单据 → 详情里"作废"；统计页看分类榜与毛利率。
+
+---
+
+## 补丁 9 — 二级分类 / 流水扁平化 / 统计三图三区间 / OCR 增强
+
+1. **二级分类**：`categories.parentId` + **数据库 Migration v1→v2**（`app/schemas/2.json` 留档）；管理弹窗可选上级分类，列表"└"缩进，商品编辑下拉按层级展示，筛选条选父分类自动含子分类。
+2. **流水页扁平化**：去 Tab，三类单据合并为**一条按时间倒序的大流水**（"售/进/支"色点徽标 + 金额颜色），类型筛选（全部/销售/进货/支出）与时间筛选并排；点行进详情（修改/作废），长按支出删除。`MediatorLiveData` 合并三源，筛选变化自动重绑。
+3. **统计图三区间三图型**：周（近7天按日）/ 月（本月按日）/ 年（本年按月聚合，新增 `observeMonthlySalesSince`）；柱状图 / 折线图（`TrendChartView` 双模式）/ 扇形图（`PieChartView`，分类占比，中心显示总额，榜单即图例）。
+4. **分类管理入口移到库存页**（搜索框旁"分类"按钮），与设置页共用 `ui/common/CategoryManageDialog`。
+5. **OCR 图像增强**：识别前灰度化 + 对比度拉伸（ColorMatrix 单次绘制，低对比拍照单据识别率提升）。
+
+**Files**：`Category.java/Migrations.java/AppDatabase.java(→v2)`、`CategoryRepository(sortHierarchical/parentId)`、`ui/common/CategoryFilter/CategoryManageDialog`、`CategoryManageAdapter/dialog_category_manage.xml`、`LedgerItem/LedgerAdapter/item_ledger.xml`（新）、`SalesViewModel/SalesFragment/fragment_sales.xml`（重构，旧三 Adapter 删除）、`TrendChartView/PieChartView/StatisticsDao/StatisticsViewModel/StatisticsFragment/fragment_statistics.xml/item_category_sales.xml/CategorySales.java`、`OcrEngine`（enhanceForOcr）、`TimeUtil(yearStart)`、`strings.xml`。
+
+**How to test（模拟器截图验证通过）**：设置→分类管理→加"饮料"再加子级"茶饮"→商品编辑下拉见缩进、筛选条选"饮料"含茶饮商品；流水页一条时间线混排、切类型/时间 Chip 即时过滤；统计页切周/月/年与柱/折/扇；拍照识别低对比单据对比旧版。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。

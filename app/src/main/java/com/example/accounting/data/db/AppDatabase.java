@@ -10,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.example.accounting.data.db.dao.CategoryDao;
 import com.example.accounting.data.db.dao.ExpenseDao;
+import com.example.accounting.data.db.dao.OrderEventDao;
 import com.example.accounting.data.db.dao.ProductDao;
 import com.example.accounting.data.db.dao.PurchaseDao;
 import com.example.accounting.data.db.dao.SaleDao;
@@ -24,6 +25,7 @@ import com.example.accounting.data.db.entity.PurchaseItem;
 import com.example.accounting.data.db.entity.Sale;
 import com.example.accounting.data.db.entity.SaleItem;
 import com.example.accounting.data.db.entity.StockMovement;
+import com.example.accounting.data.db.entity.OrderEvent;
 import com.example.accounting.data.db.entity.SyncState;
 
 import java.util.UUID;
@@ -46,11 +48,11 @@ import java.util.UUID;
                 PurchaseItem.class,
                 Expense.class,
                 StockMovement.class,
+                OrderEvent.class,
                 SyncState.class
         },
-        // 注意：这里的 1 必须与下面的 DATABASE_VERSION 保持一致；
         // 每次改表：DATABASE_VERSION + 1，同时 version 改成相同数字，并写 MIGRATION
-        version = 1,
+        version = 7,
         exportSchema = true)
 public abstract class AppDatabase extends RoomDatabase {
 
@@ -58,7 +60,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static final String DATABASE_NAME = "accounting.db";
 
     /** 当前数据库版本。改实体必须同步 +1 并写 Migration（见类注释） */
-    public static final int DATABASE_VERSION = 1;
+    public static final int DATABASE_VERSION = 7;
 
     public abstract CategoryDao categoryDao();
 
@@ -71,6 +73,8 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract ExpenseDao expenseDao();
 
     public abstract StockMovementDao stockMovementDao();
+
+    public abstract OrderEventDao orderEventDao();
 
     public abstract StatisticsDao statisticsDao();
 
@@ -87,6 +91,9 @@ public abstract class AppDatabase extends RoomDatabase {
                                     context.getApplicationContext(),
                                     AppDatabase.class,
                                     "accounting.db")
+                            .addMigrations(Migrations.MIGRATION_1_2, Migrations.MIGRATION_2_3,
+                                    Migrations.MIGRATION_3_4, Migrations.MIGRATION_4_5,
+                                    Migrations.MIGRATION_5_6, Migrations.MIGRATION_6_7)
                             .addCallback(PRESET_CATEGORIES_CALLBACK)
                             .build();
                 }

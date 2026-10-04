@@ -200,10 +200,25 @@
                     android:textColor="@color/brand_primary"
                     android:textSize="24sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/text_profit_rate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/text_daily_avg"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 近 7 天柱状图 -->
+        <!-- 统计图：周/月/年 × 柱状/折线/扇形 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -218,19 +233,171 @@
                 android:orientation="vertical"
                 android:padding="14dp">
 
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/chip_group_range2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipSpacingHorizontal="4dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_range_week"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/filter_7days" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_range_month"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:text="@string/filter_month" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_range_custom"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/filter_custom_date" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_range_year"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/filter_year" />
+                        </com.google.android.material.chip.ChipGroup>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="4dp"
+                            android:layout_marginEnd="8dp"
+                            android:background="@color/divider" />
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/chip_group_chart_type"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:chipSpacingHorizontal="4dp"
+                            app:selectionRequired="true"
+                            app:singleSelection="true">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_chart_bar"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:text="@string/chart_bar" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_chart_line"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/chart_line" />
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_chart_pie"
+                                style="@style/Widget.Material3.Chip.Filter"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/chart_pie" />
+                        </com.google.android.material.chip.ChipGroup>
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chip_group_metric"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:chipSpacingHorizontal="4dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_metric_sales"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/metric_sales" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_metric_profit"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/metric_profit" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_metric_expense"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/metric_expense" />
+                </com.google.android.material.chip.ChipGroup>
+
+                <com.example.accounting.ui.statistics.TrendChartView
+                    android:id="@+id/trend_chart"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginTop="8dp" />
+
+                <com.example.accounting.ui.statistics.PieChartView
+                    android:id="@+id/pie_chart"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 分类销售额榜 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/bg_card"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/last7_title"
+                    android:text="@string/category_sales_title"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
-                <com.example.accounting.ui.statistics.BarChartView
-                    android:id="@+id/bar_chart"
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/category_sales_list"
                     android:layout_width="match_parent"
-                    android:layout_height="180dp"
-                    android:layout_marginTop="8dp" />
+                    android:layout_height="wrap_content"
+                    android:overScrollMode="never" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

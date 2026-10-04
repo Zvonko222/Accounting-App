@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    android:fitsSystemWindows="true" xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -78,6 +79,21 @@
             android:text="@string/ocr_result_hint"
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/text_raw_lines"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="4dp"
+            android:background="@color/bg_page"
+            android:padding="8dp"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:visibility="gone" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/line_list"

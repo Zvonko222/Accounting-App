@@ -14,41 +14,26 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.accounting.R;
 import com.example.accounting.data.db.dao.PurchaseWithItems;
-import com.example.accounting.data.db.dao.PurchaseWithSummary;
 import com.example.accounting.data.db.dao.SaleWithItems;
-import com.example.accounting.data.db.dao.SaleWithSummary;
-import com.example.accounting.data.db.entity.Expense;
+import com.example.accounting.data.model.LedgerItem;
 import com.example.accounting.databinding.DialogSaleDetailBinding;
 import com.example.accounting.databinding.FragmentSalesBinding;
 import com.example.accounting.ui.expense.ExpenseDialog;
 import com.example.accounting.util.MoneyUtil;
 import com.example.accounting.util.TimeUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.tabs.TabLayout;
-
-import java.util.List;
 
 /**
- * 流水页：销售/进货/支出三个 Tab 共用一个 RecyclerView；
- * 顶部筛选行：时间范围 Chip（今天/近7天/本月/上月）+ "显示已作废"开关。
- * 销售/进货：点卡片弹详情（可修改）、可作废；支出：长按删除。
+ * 流水页：一条按时间排序的大流水（销售/进货/支出混排），
+ * 类型 Chip + 时间 Chip 两条筛选，点击行看详情（可修改/作废）。
+ * 对不熟悉手机的用户：不用切 Tab，从头到尾就是"一本账"。
  */
-public class SalesFragment extends Fragment
-        implements SaleListAdapter.Listener, PurchaseListAdapter.Listener,
-        ExpenseListAdapter.Listener {
-
-    private static final int TAB_SALES = 0;
-    private static final int TAB_PURCHASES = 1;
-    private static final int TAB_EXPENSES = 2;
+public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
 
     private FragmentSalesBinding binding;
     private SalesViewModel viewModel;
 
-    private SaleListAdapter saleAdapter;
-    private PurchaseListAdapter purchaseAdapter;
-    private ExpenseListAdapter expenseAdapter;
-
-    private int currentTab = TAB_SALES;
+    private LedgerAdapter ledgerAdapter;
 
     @Nullable
     @Override
@@ -65,60 +50,48 @@ public class SalesFragment extends Fragment
         viewModel = new ViewModelProvider(requireActivity()).get(SalesViewModel.class);
 
         binding.recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
+        ledgerAdapter = new LedgerAdapter(this);
+        binding.recycler.setAdapter(ledgerAdapter);
 
-        saleAdapter = new SaleListAdapter(this);
-        purchaseAdapter = new PurchaseListAdapter(this);
-        expenseAdapter = new ExpenseListAdapter(this);
-
-        // 三个列表都跟着筛选条件自动换数据（switchMap）
-        viewModel.getSales().observe(getViewLifecycleOwner(), sales -> {
-            if (currentTab == TAB_SALES) {
-                saleAdapter.submitList(sales);
-                binding.emptyHint.setVisibility(empty(sales));
-            }
-        });
-        viewModel.getPurchases().observe(getViewLifecycleOwner(), purchases -> {
-            if (currentTab == TAB_PURCHASES) {
-                purchaseAdapter.submitList(purchases);
-                binding.emptyHint.setVisibility(empty(purchases));
-            }
-        });
-        viewModel.getExpenses().observe(getViewLifecycleOwner(), expenses -> {
-            if (currentTab == TAB_EXPENSES) {
-                expenseAdapter.submitList(expenses);
-                binding.emptyHint.setVisibility(empty(expenses));
-            }
-        });
-
-        binding.tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                switchTab(tab.getPosition());
-            }
-
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {
-            }
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {
-            }
+        // 合并大流水：筛选条件变化自动重绑查询并重新合成
+        viewModel.getLedger().observe(getViewLifecycleOwner(), items -> {
+            ledgerAdapter.submitList(items);
+            binding.emptyHint.setVisibility(
+                    items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         setupFilterChips();
 
         binding.fabAddExpense.setOnClickListener(v -> ExpenseDialog.show(requireContext()));
-
-        switchTab(TAB_SALES);
     }
 
     private void setupFilterChips() {
+        // 类型：全部 / 销售 / 进货 / 支出
+        binding.chipGroupType.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) {
+                return;
+            }
+            int checkedId = checkedIds.get(0);
+            if (checkedId == R.id.chip_type_sale) {
+                viewModel.setTypeFilter(LedgerItem.TYPE_SALE);
+            } else if (checkedId == R.id.chip_type_purchase) {
+                viewModel.setTypeFilter(LedgerItem.TYPE_PURCHASE);
+            } else if (checkedId == R.id.chip_type_expense) {
+                viewModel.setTypeFilter(LedgerItem.TYPE_EXPENSE);
+            } else {
+                viewModel.setTypeFilter(SalesViewModel.TYPE_ALL);
+            }
+        });
+
+        // 时间：今天 / 近 7 天 / 本月 / 上月
         binding.chipGroupRange.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (checkedIds.isEmpty()) {
                 return;
             }
             int checkedId = checkedIds.get(0);
-            if (checkedId == R.id.chip_today) {
+            if (checkedId == R.id.chip_custom_date) {
+                showCustomDatePicker();
+            } else if (checkedId == R.id.chip_today) {
                 viewModel.setTimeRange(TimeUtil.todayStart(), TimeUtil.todayEnd());
             } else if (checkedId == R.id.chip_7days) {
                 viewModel.setTimeRange(TimeUtil.daysAgoStart(6), TimeUtil.todayEnd());
@@ -129,48 +102,86 @@ public class SalesFragment extends Fragment
             }
         });
 
+        // 显示已作废（默认开，能看到作废轨迹）
         binding.chipShowVoided.setOnCheckedChangeListener((buttonView, isChecked) ->
                 viewModel.setShowVoided(isChecked));
     }
 
-    private void switchTab(int position) {
-        currentTab = position;
-        int itemCount;
-        if (position == TAB_SALES) {
-            binding.recycler.setAdapter(saleAdapter);
-            saleAdapter.submitList(viewModel.getSales().getValue());
-            itemCount = saleAdapter.getItemCount();
-        } else if (position == TAB_PURCHASES) {
-            binding.recycler.setAdapter(purchaseAdapter);
-            purchaseAdapter.submitList(viewModel.getPurchases().getValue());
-            itemCount = purchaseAdapter.getItemCount();
+    private void showCustomDatePicker() {
+        java.util.Calendar calendar = java.util.Calendar.getInstance();
+        new android.app.DatePickerDialog(requireContext(), (dateView, year, month, day) -> {
+            java.util.Calendar from = java.util.Calendar.getInstance();
+            from.set(year, month, day, 0, 0, 0);
+            from.set(java.util.Calendar.MILLISECOND, 0);
+            new android.app.DatePickerDialog(requireContext(), (toView, toYear, toMonth, toDay) -> {
+                java.util.Calendar to = java.util.Calendar.getInstance();
+                to.set(toYear, toMonth, toDay, 23, 59, 59);
+                to.set(java.util.Calendar.MILLISECOND, 999);
+                if (from.getTimeInMillis() > to.getTimeInMillis()) {
+                    Toast.makeText(requireContext(), R.string.custom_date_invalid,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                viewModel.setCustomTimeRange(from.getTimeInMillis(), to.getTimeInMillis());
+            }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH),
+                    calendar.get(java.util.Calendar.DAY_OF_MONTH)).show();
+        }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)).show();
+    }
+
+    // ---------------- LedgerAdapter.Listener ----------------
+
+    @Override
+    public void onItemClicked(LedgerItem item) {
+        if (item.type == LedgerItem.TYPE_SALE) {
+            viewModel.loadSaleDetail(item.id, this::showSaleDetailDialog);
+        } else if (item.type == LedgerItem.TYPE_PURCHASE) {
+            viewModel.loadPurchaseDetail(item.id, this::showPurchaseDetailDialog);
         } else {
-            binding.recycler.setAdapter(expenseAdapter);
-            expenseAdapter.submitList(viewModel.getExpenses().getValue());
-            itemCount = expenseAdapter.getItemCount();
+            viewModel.loadExpense(item.id, this::showExpenseDetailDialog);
         }
-        binding.emptyHint.setVisibility(itemCount == 0 ? View.VISIBLE : View.GONE);
     }
 
-    private static int empty(List<?> list) {
-        return (list == null || list.isEmpty()) ? View.VISIBLE : View.GONE;
-    }
+    /** 支出详情弹窗：类型/时间/金额/备注 + 删除按钮（与其他详情交互一致） */
+    private void showExpenseDetailDialog(com.example.accounting.data.db.entity.Expense expense) {
+        if (expense == null) {
+            return;
+        }
+        String message = getString(R.string.expense_type_label) + "："
+                + com.example.accounting.data.model.ExpenseType.displayName(expense.expenseType)
+                + "\n" + TimeUtil.formatFull(expense.expenseTime)
+                + "\n" + getString(R.string.total_label) + "："
+                + MoneyUtil.toYuan(expense.amountCents)
+                + (expense.note == null ? "" : "\n" + expense.note);
 
-    // ---------------- 销售列表交互 ----------------
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.expense_title)
+                .setMessage(message);
+        if (!expense.isDeleted) {
+            builder.setNeutralButton(R.string.delete, (dialog, which) ->
+                    viewModel.deleteExpense(expense.id, new SaveToast()));
+        }
+        builder.setPositiveButton(R.string.close, null).show();
+    }
 
     @Override
-    public void onSaleClicked(SaleWithSummary item) {
-        viewModel.loadSaleDetail(item.sale.id, this::showSaleDetailDialog);
-    }
-
-    @Override
-    public void onVoidSaleClicked(SaleWithSummary item) {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setMessage(R.string.void_sale_confirm)
-                .setPositiveButton(R.string.confirm, (dialog, which) ->
-                        viewModel.voidSale(item.sale.id, new SaveToast()))
-                .setNegativeButton(R.string.cancel, null)
-                .show();
+    public void onItemLongClicked(LedgerItem item) {
+        // 统一交互：长按 = 作废/删除（都已软删除，历史可追溯）
+        if (item.deleted) {
+            return;
+        }
+        if (item.type == LedgerItem.TYPE_SALE) {
+            confirmVoidSale(item.id);
+        } else if (item.type == LedgerItem.TYPE_PURCHASE) {
+            confirmVoidPurchase(item.id);
+        } else {
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setMessage(R.string.delete_expense_confirm)
+                    .setPositiveButton(R.string.confirm, (dialog, which) ->
+                            viewModel.deleteExpense(item.id, new SaveToast()))
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        }
     }
 
     private void showSaleDetailDialog(SaleWithItems detail) {
@@ -201,28 +212,21 @@ public class SalesFragment extends Fragment
                 .setTitle(R.string.sale_detail)
                 .setView(dialogBinding.getRoot());
 
-        // 未作废的单据提供"修改"入口：进入开单页回填编辑，
-        // 保存时一个事务里作废旧单 + 重开新单
+        // 未作废的单据提供"修改"与"作废"（作废有二次确认）
         if (!detail.sale.isDeleted) {
             builder.setPositiveButton(R.string.btn_modify, (dialog, which) ->
                     SaleEditActivity.startForEdit(requireContext(), detail.sale.id));
+            builder.setNeutralButton(R.string.void_action, (dialog, which) ->
+                    confirmVoidSale(detail.sale.id));
         }
         builder.setNegativeButton(R.string.close, null).show();
     }
 
-    // ---------------- 进货列表交互 ----------------
-
-    @Override
-    public void onPurchaseClicked(PurchaseWithSummary item) {
-        viewModel.loadPurchaseDetail(item.purchase.id, this::showPurchaseDetailDialog);
-    }
-
-    @Override
-    public void onVoidPurchaseClicked(PurchaseWithSummary item) {
+    private void confirmVoidSale(String saleId) {
         new MaterialAlertDialogBuilder(requireContext())
-                .setMessage(R.string.void_purchase_confirm)
+                .setMessage(R.string.void_sale_confirm)
                 .setPositiveButton(R.string.confirm, (dialog, which) ->
-                        viewModel.voidPurchase(item.purchase.id, new SaveToast()))
+                        viewModel.voidSale(saleId, new SaveToast()))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
     }
@@ -252,23 +256,21 @@ public class SalesFragment extends Fragment
                 .setTitle(R.string.purchase_detail)
                 .setView(dialogBinding.getRoot());
 
-        // 未作废的进货单同样提供"修改"（供应商/数量/进价都可改）
         if (!detail.purchase.isDeleted) {
             builder.setPositiveButton(R.string.btn_modify, (dialog, which) ->
                     com.example.accounting.ui.purchase.PurchaseEditActivity
                             .startForEdit(requireContext(), detail.purchase.id));
+            builder.setNeutralButton(R.string.void_action, (dialog, which) ->
+                    confirmVoidPurchase(detail.purchase.id));
         }
         builder.setNegativeButton(R.string.close, null).show();
     }
 
-    // ---------------- 支出列表交互 ----------------
-
-    @Override
-    public void onExpenseLongClicked(Expense expense) {
+    private void confirmVoidPurchase(String purchaseId) {
         new MaterialAlertDialogBuilder(requireContext())
-                .setMessage(R.string.delete_expense_confirm)
+                .setMessage(R.string.void_purchase_confirm)
                 .setPositiveButton(R.string.confirm, (dialog, which) ->
-                        viewModel.deleteExpense(expense.id, new SaveToast()))
+                        viewModel.voidPurchase(purchaseId, new SaveToast()))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
     }

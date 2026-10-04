@@ -48,7 +48,10 @@ public class CategoryManageAdapter
     @Override
     public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
         Category category = categories.get(position);
-        holder.binding.categoryName.setText(category.name);
+        // 子分类缩进显示，一眼看出层级
+        String label = category.parentId == null
+                ? category.name : "　└ " + category.name;
+        holder.binding.categoryName.setText(label);
         holder.binding.btnDisableCategory.setOnClickListener(
                 v -> listener.onDisableCategoryClicked(category));
     }

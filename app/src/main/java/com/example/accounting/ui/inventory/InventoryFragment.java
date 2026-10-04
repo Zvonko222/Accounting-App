@@ -34,6 +34,12 @@ public class InventoryFragment extends Fragment implements ProductAdapter.Listen
     /** 搜索框文字变化时换查询；null 表示没在搜索 */
     private LiveData<List<Product>> currentSource;
 
+    /** 分类筛选条（"全部 / 各分类"），与搜索叠加 */
+    private com.example.accounting.ui.common.CategoryFilter categoryFilter;
+
+    /** 最新商品列表（分类切换时用它重新过滤提交） */
+    private List<Product> latestProducts;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -52,6 +58,13 @@ public class InventoryFragment extends Fragment implements ProductAdapter.Listen
         adapter = new ProductAdapter(this);
         binding.productList.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.productList.setAdapter(adapter);
+
+        // 分类筛选：分类变化重建 chips，选中变化用最新列表重新过滤
+        categoryFilter = new com.example.accounting.ui.common.CategoryFilter(
+                binding.chipGroupCategory, () ->
+                        adapter.submitList(categoryFilter.apply(latestProducts)));
+        viewModel.getCategories().observe(getViewLifecycleOwner(),
+                categories -> categoryFilter.setCategories(categories));
 
         // 首次订阅：页面可见期间用 MutableLiveData 切换搜索结果
         subscribe(viewModel.getProducts());
@@ -76,12 +89,21 @@ public class InventoryFragment extends Fragment implements ProductAdapter.Listen
         });
 
         binding.fabAddProduct.setOnClickListener(v -> openEditor(null));
+
+        // 分类管理入口（共享弹窗，含二级目录）
+        binding.btnManageCategory.setOnClickListener(v ->
+                com.example.accounting.ui.common.CategoryManageDialog.show(this,
+                        ((com.example.accounting.AccountingApp) requireActivity().getApplication())
+                                .getCategoryRepository(),
+                        viewModel.getCategories()));
     }
 
     private void subscribe(LiveData<List<Product>> source) {
         currentSource = source;
-        source.observe(getViewLifecycleOwner(),
-                products -> adapter.submitList(products));
+        source.observe(getViewLifecycleOwner(), products -> {
+            latestProducts = products;
+            adapter.submitList(categoryFilter.apply(products));
+        });
     }
 
     private void unsubscribeCurrent() {
@@ -126,10 +148,9 @@ public class InventoryFragment extends Fragment implements ProductAdapter.Listen
                 .setView(dialogBinding.getRoot())
                 .setPositiveButton(R.string.confirm, (dialog, which) -> {
                     String text = String.valueOf(dialogBinding.actualQty.getText()).trim();
-                    Long actual = QuantityUtil.parse(text);
+                    Long actual = QuantityUtil.parseNonNegative(text);
                     if (actual == null) {
-                        android.widget.Toast.makeText(requireContext(),
-                                R.string.qty_dialog_title, android.widget.Toast.LENGTH_SHORT).show();
+                        dialogBinding.actualQty.setError(getString(R.string.stock_non_negative));
                         return;
                     }
                     String reason = String.valueOf(dialogBinding.adjustReason.getText()).trim();

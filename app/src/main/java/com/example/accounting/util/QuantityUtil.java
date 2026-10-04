@@ -48,4 +48,28 @@ public final class QuantityUtil {
             return null;
         }
     }
+
+    /** 盘点数量解析：允许 0，但不允许负数。 */
+    public static Long parseNonNegative(String text) {
+        if (text == null) {
+            return null;
+        }
+        String trimmed = text.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            BigDecimal value = new BigDecimal(trimmed);
+            if (value.signum() < 0) {
+                return null;
+            }
+            BigDecimal milli = value.movePointRight(3).setScale(0, RoundingMode.HALF_UP);
+            if (milli.compareTo(BigDecimal.valueOf(1_000_000_000L)) > 0) {
+                return null;
+            }
+            return milli.longValue();
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }

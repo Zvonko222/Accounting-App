@@ -38,8 +38,14 @@ public class ProductEditActivity extends AppCompatActivity {
     /** 编辑模式下被编辑的商品，新增时为 null */
     private Product editingProduct;
 
-    /** 下拉框数据：第 0 项是"不分类"，后面是各分类 */
+    /** 全部激活分类（原始列表） */
     private final List<Category> categories = new ArrayList<>();
+
+    /** 下拉框展示顺序（父在前、子紧随），与 displayNames 一一对应 */
+    private final List<Category> displayCategories = new ArrayList<>();
+
+    /** 快捷新增分类：新增成功后要自动选中的分类名（等 LiveData 回来再选） */
+    private String pendingNewCategoryName;
 
     public static void start(Context context, Product product) {
         Intent intent = new Intent(context, ProductEditActivity.class);
@@ -73,12 +79,12 @@ public class ProductEditActivity extends AppCompatActivity {
             binding.btnDisable.setOnClickListener(v -> confirmDisable());
         }
 
+        binding.btnAddCategoryInline.setOnClickListener(v -> showQuickAddCategory());
         binding.btnSave.setOnClickListener(v -> save());
     }
 
     private void setupCategorySpinner() {
-        // 第 0 项固定"不分类"，与 categories 的 index 一一对应：
-        // 选中 spinner 第 i 项 => categoryId = (i == 0 ? null : categories.get(i - 1).id)
+        // 第 0 项固定"不分类"，后面按层级展示：子分类带"└"缩进
         List<String> displayNames = new ArrayList<>();
         displayNames.add(getString(R.string.no_category));
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
@@ -99,6 +105,14 @@ public class ProductEditActivity extends AppCompatActivity {
             for (Category category : categories) {
                 displayNames.add(category.name);
             }
+            // 平铺展示（分类已按用户要求退回一级）
+            displayCategories.clear();
+            displayNames.clear();
+            displayNames.add(getString(R.string.no_category));
+            for (Category category : categories) {
+                displayCategories.add(category);
+                displayNames.add(category.name);
+            }
             ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                     android.R.layout.simple_spinner_item, displayNames);
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -107,6 +121,17 @@ public class ProductEditActivity extends AppCompatActivity {
             // 编辑模式：等分类加载完再回填选中项
             if (editingProduct != null) {
                 selectCategory(editingProduct.categoryId);
+            }
+            // 快捷新增：分类列表刷新后自动选中刚加的分类
+            if (pendingNewCategoryName != null) {
+                for (Category category : categories) {
+                    if (category.name.equals(pendingNewCategoryName)) {
+                        binding.spinnerCategory.setSelection(
+                                displayNames.indexOf(pendingNewCategoryName));
+                        pendingNewCategoryName = null;
+                        break;
+                    }
+                }
             }
         });
     }
@@ -130,6 +155,42 @@ public class ProductEditActivity extends AppCompatActivity {
         });
     }
 
+    /** 快捷新增分类：不用跑去设置页，录商品的途中顺手加 */
+    private void showQuickAddCategory() {
+        android.view.View dialogView = getLayoutInflater()
+                .inflate(R.layout.dialog_input_quantity, null, false);
+        android.widget.EditText input = dialogView.findViewById(R.id.input_quantity);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setHint(R.string.category_name_hint);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.add_category_short)
+                .setView(dialogView)
+                .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                    String name = String.valueOf(input.getText()).trim();
+                    if (name.isEmpty()) {
+                        return;
+                    }
+                    pendingNewCategoryName = name;
+                    viewModel.addCategory(name, new SaveCallback() {
+                        @Override
+                        public void onSuccess() {
+                            Toast.makeText(ProductEditActivity.this,
+                                    R.string.category_added, Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            pendingNewCategoryName = null;
+                            Toast.makeText(ProductEditActivity.this, message,
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
     private void fillForm(Product product) {
         binding.inputName.setText(product.name);
         binding.inputSalePrice.setText(MoneyUtil.toDisplay(product.salePriceCents));
@@ -149,8 +210,8 @@ public class ProductEditActivity extends AppCompatActivity {
             binding.spinnerCategory.setSelection(0);
             return;
         }
-        for (int i = 0; i < categories.size(); i++) {
-            if (categories.get(i).id.equals(categoryId)) {
+        for (int i = 0; i < displayCategories.size(); i++) {
+            if (displayCategories.get(i).id.equals(categoryId)) {
                 binding.spinnerCategory.setSelection(i + 1);
                 return;
             }
@@ -222,10 +283,10 @@ public class ProductEditActivity extends AppCompatActivity {
 
     private String selectedCategoryId() {
         int position = binding.spinnerCategory.getSelectedItemPosition();
-        if (position <= 0 || position > categories.size()) {
+        if (position <= 0 || position > displayCategories.size()) {
             return null;
         }
-        return categories.get(position - 1).id;
+        return displayCategories.get(position - 1).id;
     }
 
     private static String text(com.google.android.material.textfield.TextInputEditText input) {

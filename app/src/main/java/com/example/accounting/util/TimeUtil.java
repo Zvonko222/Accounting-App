@@ -59,6 +59,13 @@ public final class TimeUtil {
         return endOfDay(calendar.getTimeInMillis());
     }
 
+    /** 本年 1 月 1 日 00:00（统计"年"区间用） */
+    public static long yearStart() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.DAY_OF_YEAR, 1);
+        return startOfDay(calendar.getTimeInMillis());
+    }
+
     /** 上月 1 号 00:00 */
     public static long lastMonthStart() {
         Calendar calendar = Calendar.getInstance();

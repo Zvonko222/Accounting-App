@@ -14,6 +14,7 @@ import com.example.accounting.data.db.entity.Purchase;
 import com.example.accounting.data.db.entity.PurchaseItem;
 import com.example.accounting.data.db.entity.Sale;
 import com.example.accounting.data.db.entity.SaleItem;
+import com.example.accounting.data.db.entity.OrderEvent;
 import com.example.accounting.data.db.entity.StockMovement;
 import com.example.accounting.data.db.entity.SyncEntity;
 import com.example.accounting.data.db.entity.SyncState;
@@ -61,6 +62,7 @@ public class SyncEngine {
     public static final String TABLE_PURCHASE_ITEMS = "purchase_items";
     public static final String TABLE_EXPENSES = "expenses";
     public static final String TABLE_STOCK_MOVEMENTS = "stock_movements";
+    public static final String TABLE_ORDER_EVENTS = "order_events";
 
     // ---- sync_state 键 ----
     private static final String KEY_DEVICE_ID = "device_id";
@@ -303,6 +305,7 @@ public class SyncEngine {
                 : entity instanceof Purchase ? ((Purchase) entity).id
                 : entity instanceof PurchaseItem ? ((PurchaseItem) entity).id
                 : entity instanceof Expense ? ((Expense) entity).id
+                : entity instanceof OrderEvent ? ((OrderEvent) entity).id
                 : ((StockMovement) entity).id;
     }
 
@@ -422,6 +425,20 @@ public class SyncEngine {
                 db.stockMovementDao().upsertFromRemote(entity); }
         });
 
+        map.put(TABLE_ORDER_EVENTS, new TableHandler<OrderEvent>() {
+            @Override public String table() { return TABLE_ORDER_EVENTS; }
+            @Override public List<OrderEvent> dirty(int limit) {
+                return db.orderEventDao().listDirtyForSync(limit); }
+            @Override public Class<OrderEvent> type() { return OrderEvent.class; }
+            @Override public SyncEntity findById(String id) {
+                return db.orderEventDao().findById(id); }
+            @Override public void mark(List<String> ids, int status, Long syncedAt,
+                                       String error, int incRetry) {
+                db.orderEventDao().markSyncStatus(ids, status, syncedAt, error, incRetry); }
+            @Override public void upsertRemote(OrderEvent entity) {
+                db.orderEventDao().upsertFromRemote(entity); }
+        });
+
         return map;
     }
 
@@ -452,3 +469,14 @@ public class SyncEngine {
         AppDatabase.getInstance(context).syncStateDao().put(state);
     }
 }
+
+
+
+
+
+
+
+
+
+
+

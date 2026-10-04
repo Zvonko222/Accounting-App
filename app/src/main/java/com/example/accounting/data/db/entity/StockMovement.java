@@ -36,6 +36,8 @@ public class StockMovement extends SyncEntity {
     public static final int TYPE_VOID_SALE = 5;
     /** 进货作废冲回 */
     public static final int TYPE_VOID_PURCHASE = 6;
+    /** 订单退货回补 */
+    public static final int TYPE_RETURN_SALE = 7;
 
     @PrimaryKey
     @NonNull

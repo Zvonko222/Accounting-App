@@ -10,8 +10,10 @@ import com.example.accounting.data.db.dao.ProductDao;
 import com.example.accounting.data.db.dao.SaleDao;
 import com.example.accounting.data.db.dao.SaleWithItems;
 import com.example.accounting.data.db.dao.SaleWithSummary;
+import com.example.accounting.data.db.dao.SaleWithSummary;
 import com.example.accounting.data.db.dao.StatisticsDao;
 import com.example.accounting.data.db.dao.StockMovementDao;
+import com.example.accounting.data.db.entity.OrderEvent;
 import com.example.accounting.data.db.entity.Product;
 import com.example.accounting.data.db.entity.Sale;
 import com.example.accounting.data.db.entity.SaleItem;
@@ -40,6 +42,7 @@ public class SaleRepository {
     private final ProductDao productDao;
     private final StockMovementDao stockMovementDao;
     private final StatisticsDao statisticsDao;
+    private final com.example.accounting.data.db.dao.OrderEventDao orderEventDao;
     private final ExecutorService writeExecutor;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -49,6 +52,7 @@ public class SaleRepository {
         this.productDao = database.productDao();
         this.stockMovementDao = database.stockMovementDao();
         this.statisticsDao = database.statisticsDao();
+        this.orderEventDao = database.orderEventDao();
         this.writeExecutor = writeExecutor;
     }
 
@@ -89,6 +93,129 @@ public class SaleRepository {
         void onLoaded(SaleWithItems detail);
     }
 
+    public LiveData<List<OrderEvent>> observeOrderEvents(String saleId) {
+        return orderEventDao.observeForSale(saleId);
+    }
+
+    public void recordOrderEvent(String saleId, int eventType, String note,
+                                 SaveCallback callback) {
+        recordOrderEvent(saleId, eventType, null, null, 0, note, callback);
+    }
+
+    public void recordOrderEvent(String saleId, int eventType, String originalProductId,
+                                 String replacementProductId, long quantityMilli,
+                                 String note, SaveCallback callback) {
+        writeExecutor.execute(() -> {
+            try {
+                database.runInTransaction(() -> {
+                    Sale sale = saleDao.findById(saleId);
+                    if (sale == null || sale.isDeleted) {
+                        throw new IllegalStateException("订单不存在");
+                    }
+                    long now = System.currentTimeMillis();
+                    OrderEvent event = new OrderEvent();
+                    event.id = UUID.randomUUID().toString();
+                    event.initTimestamps();
+                    event.saleId = saleId;
+                    event.eventType = eventType;
+                    event.eventTime = now;
+                    event.amountCents = sale.totalAmountCents;
+                    event.originalAmountCents = sale.totalAmountCents;
+                    event.originalProductId = originalProductId;
+                    event.replacementProductId = replacementProductId;
+                    event.quantityMilli = quantityMilli;
+                    event.note = normalizeNote(note);
+
+                    SaleItem originalItem = null;
+                    if (originalProductId != null) {
+                        for (SaleItem item : saleDao.listItems(saleId)) {
+                            if (originalProductId.equals(item.productId)) {
+                                originalItem = item;
+                                break;
+                            }
+                        }
+                    }
+                    if (eventType == OrderEvent.TYPE_RETURN) {
+                        event.differenceCents = -sale.totalAmountCents;
+                    } else if (eventType == OrderEvent.TYPE_EXCHANGE
+                            && originalItem != null && replacementProductId != null) {
+                        Product replacement = productDao.findById(replacementProductId);
+                        if (replacement == null) throw new IllegalStateException("换货商品不存在");
+                        long safeQuantity = quantityMilli <= 0 ? originalItem.quantityMilli : quantityMilli;
+                        event.originalAmountCents = originalItem.unitPriceCents * safeQuantity / 1000;
+                        event.replacementAmountCents = replacement.salePriceCents * safeQuantity / 1000;
+                        event.differenceCents = event.replacementAmountCents - event.originalAmountCents;
+                        event.amountCents = event.differenceCents;
+                    }
+                    orderEventDao.insert(event);
+
+                    if (eventType == OrderEvent.TYPE_RETURN) {
+                        List<SaleItem> items = saleDao.listItems(saleId);
+                        List<StockMovement> movements = new ArrayList<>();
+                        for (SaleItem item : items) {
+                            Product product = productDao.findById(item.productId);
+                            if (product == null) continue;
+                            product.stockQuantityMilli += item.quantityMilli;
+                            product.markPending();
+                            productDao.update(product);
+
+                            StockMovement movement = new StockMovement();
+                            movement.id = UUID.randomUUID().toString();
+                            movement.initTimestamps();
+                            movement.productId = product.id;
+                            movement.changeType = StockMovement.TYPE_RETURN_SALE;
+                            movement.changeQuantityMilli = item.quantityMilli;
+                            movement.relatedSaleId = saleId;
+                            movement.movementTime = now;
+                            movement.note = "订单退货回补";
+                            movements.add(movement);
+                        }
+                        if (!movements.isEmpty()) {
+                            stockMovementDao.insertAll(movements);
+                        }
+                    } else if (eventType == OrderEvent.TYPE_EXCHANGE
+                            && originalItem != null && replacementProductId != null) {
+                        Product oldProduct = productDao.findById(originalItem.productId);
+                        Product newProduct = productDao.findById(replacementProductId);
+                        if (oldProduct == null || newProduct == null) {
+                            throw new IllegalStateException("换货商品不存在");
+                        }
+                        long safeQuantity = quantityMilli <= 0 ? originalItem.quantityMilli : quantityMilli;
+                        oldProduct.stockQuantityMilli += safeQuantity;
+                        oldProduct.markPending();
+                        productDao.update(oldProduct);
+                        newProduct.stockQuantityMilli = Math.max(0,
+                                newProduct.stockQuantityMilli - safeQuantity);
+                        newProduct.markPending();
+                        productDao.update(newProduct);
+                        StockMovement returned = new StockMovement();
+                        returned.id = UUID.randomUUID().toString();
+                        returned.initTimestamps();
+                        returned.productId = oldProduct.id;
+                        returned.changeType = StockMovement.TYPE_RETURN_SALE;
+                        returned.changeQuantityMilli = safeQuantity;
+                        returned.relatedSaleId = saleId;
+                        returned.movementTime = now;
+                        returned.note = "换货退回原商品";
+                        StockMovement replacement = new StockMovement();
+                        replacement.id = UUID.randomUUID().toString();
+                        replacement.initTimestamps();
+                        replacement.productId = newProduct.id;
+                        replacement.changeType = StockMovement.TYPE_SALE;
+                        replacement.changeQuantityMilli = -safeQuantity;
+                        replacement.relatedSaleId = saleId;
+                        replacement.movementTime = now;
+                        replacement.note = "换货发出新商品";
+                        stockMovementDao.insertAll(java.util.Arrays.asList(returned, replacement));
+                    }
+                });
+                notifySuccess(callback);
+            } catch (Exception e) {
+                notifyError(callback, e.getMessage());
+            }
+        });
+    }
+
     // ---------------- 写入 ----------------
 
     /**
@@ -103,11 +230,51 @@ public class SaleRepository {
      */
     public void recordSale(List<SaleCartLine> lines, long discountCents,
                            int payMethod, String note, long recordTimeMillis,
-                           SaveCallback callback) {
+                            boolean deliveryRequested, String deliveryAddress, String deliveryPhone,
+                            SaveCallback callback) {
         writeExecutor.execute(() -> {
             try {
-                database.runInTransaction(() ->
-                        insertSaleLocked(lines, discountCents, payMethod, note, recordTimeMillis));
+                database.runInTransaction(() -> insertSaleLocked(lines, discountCents,
+                        payMethod, note, recordTimeMillis, deliveryRequested, deliveryAddress,
+                        deliveryPhone));
+                notifySuccess(callback);
+            } catch (Exception e) {
+                notifyError(callback, e.getMessage());
+            }
+        });
+    }
+
+    // 订单页查询（LiveData，Room 自动后台执行）
+    public LiveData<List<SaleWithSummary>> observePendingDeliveryBetween(long fromMillis, long toMillis) {
+        return saleDao.observePendingDeliveryBetween(fromMillis, toMillis);
+    }
+
+    public LiveData<List<SaleWithSummary>> observeDeliveredRecentlyBetween(long fromMillis, long toMillis) {
+        return saleDao.observeDeliveredRecentlyBetween(fromMillis, toMillis);
+    }
+
+    public LiveData<List<SaleWithSummary>> observePendingDelivery() {
+        return saleDao.observePendingDelivery();
+    }
+
+    public LiveData<List<SaleWithSummary>> observeDeliveredRecently() {
+        return saleDao.observeDeliveredRecently();
+    }
+
+    /** 确认交付（订单页）：置已交付 + 记时间 + 标记待同步，一个事务 */
+    public void markDelivered(String saleId, SaveCallback callback) {
+        writeExecutor.execute(() -> {
+            try {
+                database.runInTransaction(() -> {
+                    Sale sale = saleDao.findById(saleId);
+                    if (sale == null || sale.isDeleted) {
+                        throw new IllegalStateException("订单不存在");
+                    }
+                    sale.deliveryStatus = 2;
+                    sale.deliveredAt = System.currentTimeMillis();
+                    sale.markPending();
+                    saleDao.update(sale);
+                });
                 notifySuccess(callback);
             } catch (Exception e) {
                 notifyError(callback, e.getMessage());
@@ -124,12 +291,29 @@ public class SaleRepository {
      * 全部重新生成，"当前库存 = 期初 + Σ台账变动"的恒等式依然成立。
      */
     public void editSale(String saleId, List<SaleCartLine> lines, long discountCents,
-                         int payMethod, long recordTimeMillis, SaveCallback callback) {
+                         int payMethod, long recordTimeMillis, boolean deliveryRequested,
+                         String deliveryAddress, String deliveryPhone, SaveCallback callback) {
         writeExecutor.execute(() -> {
             try {
                 database.runInTransaction(() -> {
+                    // 已交付的旧单，修改重开时保留已交付状态（交付事实不因改单消失）
+                    Sale old = saleDao.findById(saleId);
+                    boolean wasDelivered = old != null && old.deliveryStatus == 2;
+                    Long deliveredAt = wasDelivered ? old.deliveredAt : null;
                     voidSaleLocked(saleId);
-                    insertSaleLocked(lines, discountCents, payMethod, null, recordTimeMillis);
+                    insertSaleLocked(lines, discountCents, payMethod, null,
+                            recordTimeMillis, deliveryRequested, deliveryAddress, deliveryPhone);
+                    if (wasDelivered) {
+                        Sale renewed = saleDao.listDirtyItemsForSync(1).isEmpty()
+                                ? saleDao.findById(saleId) : null;
+                        // 重开后的新单恢复已交付状态
+                        Sale newSale = findNewestSaleLocked();
+                        if (newSale != null) {
+                            newSale.deliveryStatus = 2;
+                            newSale.deliveredAt = deliveredAt;
+                            saleDao.update(newSale);
+                        }
+                    }
                 });
                 notifySuccess(callback);
             } catch (Exception e) {
@@ -157,7 +341,8 @@ public class SaleRepository {
 
     /** 插入一张销售单及其全部影响。调用方必须已处于事务中 */
     private void insertSaleLocked(List<SaleCartLine> lines, long discountCents,
-                                  int payMethod, String note, long recordTimeMillis) {
+                                  int payMethod, String note, long recordTimeMillis,
+                                  boolean deliveryRequested, String deliveryAddress, String deliveryPhone) {
         if (lines == null || lines.isEmpty()) {
             throw new IllegalArgumentException("本单没有任何商品");
         }
@@ -185,6 +370,9 @@ public class SaleRepository {
                 SaleCalculator.orderTotalCents(sumLineTotals, sale.discountCents);
         sale.payMethod = payMethod;
         sale.note = normalizeNote(note);
+        sale.deliveryStatus = deliveryRequested ? 1 : 0;
+        sale.deliveryAddress = normalizeNote(deliveryAddress);
+        sale.deliveryPhone = normalizeNote(deliveryPhone);
         saleDao.insert(sale);
 
         List<SaleItem> saleItems = new ArrayList<>();
@@ -210,8 +398,9 @@ public class SaleRepository {
             item.lineTotalCents = line.lineTotalCents();
             saleItems.add(item);
 
-            // 3. 扣库存
-            product.stockQuantityMilli -= line.quantityMilli;
+            // 3. 扣库存，库存最低保持为 0；售出超库存由开单页提示，但不阻止销售
+            product.stockQuantityMilli = Math.max(0,
+                    product.stockQuantityMilli - line.quantityMilli);
             product.markPending();
             productDao.update(product);
 
@@ -229,6 +418,18 @@ public class SaleRepository {
 
         saleDao.insertItems(saleItems);
         stockMovementDao.insertAll(movements);
+    }
+
+    /** 取最新一张销售单（修改重开后恢复交付状态用） */
+    private Sale findNewestSaleLocked() {
+        List<Sale> all = saleDao.listDirtyForSync(Integer.MAX_VALUE);
+        Sale newest = null;
+        for (Sale sale : all) {
+            if (newest == null || sale.updatedAt > newest.updatedAt) {
+                newest = sale;
+            }
+        }
+        return newest;
     }
 
     /** 作废一张销售单及其全部库存影响。调用方必须已处于事务中 */
@@ -293,3 +494,4 @@ public class SaleRepository {
         }
     }
 }
+

@@ -9,6 +9,8 @@
     <color name="money_in">#1B7E4A</color>
     <color name="money_out">#B3261E</color>
     <color name="warning">#E65100</color>
+    <color name="order_return_bg">#FFF1F0</color>
+    <color name="order_exchange_bg">#FFF8E1</color>
 
     <color name="text_primary">#1C1B1F</color>
     <color name="text_secondary">#5F6368</color>

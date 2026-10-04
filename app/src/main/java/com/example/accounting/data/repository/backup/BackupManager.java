@@ -139,6 +139,20 @@ public class BackupManager {
         syncStateDao.put(state);
     }
 
+    /** 本机备份概况，供设置页解释当前是否真的有可用备份。 */
+    public String getLocalBackupSummary() {
+        File dir = localBackupDir();
+        File[] files = dir.listFiles((d, name) ->
+                name.startsWith("backup_accounting_") && name.endsWith(".db"));
+        if (files == null || files.length == 0) {
+            return "本机自动备份：暂无文件";
+        }
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        File latest = files[0];
+        return "本机自动备份：" + files.length + " 份，最近一份："
+                + latest.getName() + "（" + latest.length() + " 字节）";
+    }
+
     /** 上次本机备份时间（毫秒），从未备份返回 null */
     public Long getLastBackupTime() {
         String value = syncStateDao.getValue("last_backup_at");
@@ -407,3 +421,5 @@ public class BackupManager {
         manager.performLocalBackup();
     }
 }
+
+

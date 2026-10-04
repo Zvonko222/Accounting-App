@@ -22,6 +22,9 @@ public class Category extends SyncEntity {
     /** 分类名，唯一约束防止出现"饮料/饮品"两个分类导致统计失真 */
     public String name;
 
+    /** 上级分类 id；null = 顶级分类（二级目录：饮料 → 碳酸饮料/茶饮） */
+    public String parentId;
+
     /** 界面显示顺序，小的在前 */
     public int sortOrder;
 }

@@ -21,10 +21,15 @@ public class SettingsViewModel extends AndroidViewModel {
 
     /** 上次本机备份时间（毫秒），null = 从未备份过 */
     private final MutableLiveData<Long> lastBackupTime = new MutableLiveData<>();
+    private final MutableLiveData<String> backupSummary = new MutableLiveData<>();
 
     public SettingsViewModel(Application app) {
         super(app);
         backupManager = ((AccountingApp) app).getBackupManager();
+    }
+
+    public MutableLiveData<String> getBackupSummary() {
+        return backupSummary;
     }
 
     public MutableLiveData<Long> getLastBackupTime() {
@@ -39,12 +44,18 @@ public class SettingsViewModel extends AndroidViewModel {
         });
     }
 
+    public void reloadBackupSummary() {
+        ((AccountingApp) getApplication()).getDatabaseWriteExecutor().execute(() ->
+                backupSummary.postValue(backupManager.getLocalBackupSummary()));
+    }
+
     /** 立即备份：委托 BackupManager（回调已在主线程），成功后刷新"上次备份"时间 */
     public void backupNow(BackupManager.BackupCallback callback) {
         backupManager.backupNow(new BackupManager.BackupCallback() {
             @Override
             public void onDone(String message) {
                 lastBackupTime.setValue(System.currentTimeMillis());
+                reloadBackupSummary();
                 callback.onDone(message);
             }
 
@@ -177,7 +188,8 @@ public class SettingsViewModel extends AndroidViewModel {
                     + db.purchaseDao().listDirtyForSync(Integer.MAX_VALUE).size()
                     + db.purchaseDao().listDirtyItemsForSync(Integer.MAX_VALUE).size()
                     + db.expenseDao().listDirtyForSync(Integer.MAX_VALUE).size()
-                    + db.stockMovementDao().listDirtyForSync(Integer.MAX_VALUE).size();
+                    + db.stockMovementDao().listDirtyForSync(Integer.MAX_VALUE).size()
+                    + db.orderEventDao().listDirtyForSync(Integer.MAX_VALUE).size();
             pendingCount.postValue(pending);
 
             String lastAt = com.example.accounting.data.sync.SyncEngine
@@ -193,3 +205,7 @@ public class SettingsViewModel extends AndroidViewModel {
         });
     }
 }
+
+
+
+

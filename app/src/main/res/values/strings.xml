@@ -15,6 +15,24 @@
     <string name="nav_sales">流水</string>
     <string name="nav_inventory">库存</string>
     <string name="nav_statistics">统计</string>
+    <string name="nav_orders">订单</string>
+    <string name="orders_pending_title">待交付</string>
+    <string name="orders_pending_empty">暂无待交付订单（开单时勾选"此单需要交付"）</string>
+    <string name="orders_delivered_title">最近已交付</string>
+    <string name="orders_deliver">确认交付</string>
+    <string name="order_event_short">售后</string>
+    <string name="order_event_title">订单售后</string>
+    <string name="order_event_return">退货</string>
+    <string name="order_event_exchange">换货</string>
+    <string name="order_event_other">其他事件</string>
+    <string name="order_event_note_title">填写事件备注</string>
+    <string name="order_event_note_hint">备注（可选）</string>
+    <string name="order_event_saved">订单事件已记录</string>
+    <string name="order_exchange_original">选择原商品</string>
+    <string name="order_exchange_replacement">选择换入商品</string>
+    <string name="order_exchange_quantity">换货数量</string>
+    <string name="deliver_confirm">确认这单已交付？金额 </string>
+    <string name="delivered_done">已确认交付</string>
     <string name="nav_settings">设置</string>
 
     <!-- 首页 -->
@@ -57,8 +75,9 @@
     <!-- 开单 -->
     <string name="sale_edit_title">开单</string>
     <string name="cart_empty">点击下方商品加入本单</string>
-    <string name="complete_sale">完成销售</string>
+    <string name="complete_sale">完成</string>
     <string name="need_items">请先选择商品</string>
+    <string name="stock_insufficient_warning">当前存量不足，仍可继续销售</string>
     <string name="sale_saved">已保存</string>
     <string name="qty_label">数量</string>
     <string name="qty_dialog_title">输入数量</string>
@@ -74,6 +93,7 @@
     <string name="delete_expense_confirm">确定删除这笔支出吗？</string>
     <string name="category_section">商品分类</string>
     <string name="category_manage">分类管理</string>
+    <string name="parent_category_label">上级分类（可选，形成二级目录）</string>
     <string name="category_name_hint">新分类名称</string>
     <string name="category_add">添加</string>
     <string name="category_added">已添加</string>
@@ -87,6 +107,7 @@
     <string name="ocr_gallery">从相册选择</string>
     <string name="ocr_hint">拍摄进货单 / 商品标签，自动识别品名、数量和进价。识别后你可以逐行核对，确认无误才入库。</string>
     <string name="ocr_recognizing">正在识别…</string>
+    <string name="ocr_raw_lines">原始识别文本（识别不准的行可点开修改或取消勾选）：</string>
     <string name="ocr_result_hint">勾选要导入的行；点一行可改数量和进价。没有同名商品的商品会自动创建（售价请之后补录）。</string>
     <string name="ocr_retake">重新识别</string>
     <string name="ocr_import">导入</string>
@@ -95,9 +116,25 @@
     <string name="ocr_failed">识别失败</string>
     <string name="ocr_imported">已导入 %1$d 行</string>
     <string name="btn_ocr_purchase">拍照记进货</string>
+    <string name="delivery_requested">需要交付</string>
+    <string name="delivery_address_title">交付地址</string>
+    <string name="delivery_phone_title">联系电话</string>
+    <string name="delivery_address_hint">交付地址</string>
+    <string name="delivery_phone_hint">联系电话</string>
+    <string name="delivery_summary_empty">未填写交付信息</string>
+    <string name="edit_delivery">编辑明细</string>
+    <string name="delivery_editor_title">交付信息</string>
     <string name="record_time_fmt">记账时间：%1$s（点击可改）</string>
+    <string name="filter_all">全部</string>
+    <string name="add_category_short">新增分类</string>
+    <string name="quick_product">临时创建商品并开单</string>
+    <string name="quick_product_name_hint">临时商品名称</string>
+    <string name="quick_product_price_hint">售价（元）</string>
     <string name="widget_today_label">今日经营</string>
     <string name="widget_count_fmt">今日 %1$d 单</string>
+    <string name="widget_btn_sale">出售</string>
+    <string name="widget_btn_expense">支出</string>
+    <string name="widget_btn_deliver">交货</string>
     <string name="widget_zero_count">今日 0 单</string>
     <string name="widget_add">添加桌面小组件（今日经营）</string>
     <string name="widget_add_unsupported">当前系统不支持快捷添加，请在桌面空白处长按 → 小组件里查找"售货记账"</string>
@@ -148,7 +185,8 @@
     <string name="btn_adjust">盘点</string>
     <string name="btn_history">记录</string>
     <string name="current_stock">当前库存</string>
-    <string name="actual_qty_hint">如 12 或 1.5</string>
+    <string name="actual_qty_hint">如 0、12 或 1.5</string>
+    <string name="stock_non_negative">库存数量不能小于 0</string>
     <string name="low_stock_tag">库存不足</string>
     <string name="negative_stock_tag">需盘点</string>
 
@@ -176,16 +214,30 @@
     <string name="month_expense">本月其他支出</string>
     <string name="month_profit">本月毛利(估)</string>
     <string name="last7_title">近 7 天销售额</string>
+    <string name="filter_year">年</string>
+    <string name="filter_custom_date">指定日期</string>
+    <string name="custom_date_invalid">请选择有效的日期范围</string>
+    <string name="metric_sales">销售额</string>
+    <string name="metric_profit">毛利</string>
+    <string name="metric_expense">支出</string>
+    <string name="chart_bar">柱状图</string>
+    <string name="chart_line">折线图</string>
+    <string name="chart_pie">扇形图</string>
+    <string name="trend_title">销售趋势</string>
+    <string name="category_sales_title">分类销售额（本月）</string>
+    <string name="profit_rate_fmt">毛利率：约 %1$s%%</string>
+    <string name="daily_avg_fmt">日均销售额：约 %1$s</string>
     <string name="top_products_title">热销商品 前 5</string>
 
     <!-- 设置 / 备份 -->
     <string name="settings_title">设置</string>
     <string name="backup_section">数据备份</string>
     <string name="backup_now">立即备份到本机</string>
-    <string name="backup_auto_hint">每天自动备份一次，本机保留最近 7 份。建议定期“导出备份文件”到电脑或网盘。</string>
+    <string name="backup_auto_hint">每天自动备份到 App 私有空间，最多保留 7 份。卸载 App 或更换手机后本机备份可能消失，请定期点“导出备份文件”保存到下载、电脑或网盘。</string>
+    <string name="backup_summary_loading">正在检查本机备份…</string>
     <string name="backup_export">导出备份文件</string>
     <string name="backup_restore">从备份文件恢复</string>
-    <string name="backup_restore_confirm">恢复将覆盖当前全部数据，操作不可撤销。建议先导出一份当前备份再继续。确定恢复吗？</string>
+    <string name="backup_restore_confirm">恢复会覆盖当前全部记账数据。请确认你选择的是本软件导出的 .db 备份文件；恢复完成后应用会重启。当前数据可能无法撤销，确定继续吗？</string>
     <string name="backup_done">备份完成</string>
     <string name="backup_failed">备份失败</string>
     <string name="backup_last">上次备份：%s</string>
@@ -198,3 +250,4 @@
     <string name="about_section">关于</string>
     <string name="about_text">售货记账 · 本地离线记账软件\n数据保存在本机，定期自动备份，不联网也能记账。</string>
 </resources>
+

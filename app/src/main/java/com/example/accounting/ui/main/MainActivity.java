@@ -1,5 +1,6 @@
 package com.example.accounting.ui.main;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -63,6 +64,25 @@ public class MainActivity extends AppCompatActivity {
         showPage(R.id.nav_home);
         // 底部导航自己恢复选中状态时可能停在别的 Tab，强制回首页
         binding.bottomNav.setSelectedItemId(R.id.nav_home);
+    
+        handleWidgetRoute(getIntent());
+    }
+
+    /** 桌面小组件"支出"按钮路由：带 extra 打开本页 → 直接弹记支出 */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleWidgetRoute(intent);
+    }
+
+    private void handleWidgetRoute(Intent intent) {
+        if (intent != null && intent.getBooleanExtra(
+                com.example.accounting.widget.TodayWidgetProvider.EXTRA_OPEN_EXPENSE, false)) {
+            // 弹完就清掉 extra，旋转重建时不重复弹
+            intent.removeExtra(
+                    com.example.accounting.widget.TodayWidgetProvider.EXTRA_OPEN_EXPENSE);
+            com.example.accounting.ui.expense.ExpenseDialog.show(this);
+        }
     }
 
     @Override
@@ -103,6 +123,8 @@ public class MainActivity extends AppCompatActivity {
             return new SalesFragment();
         } else if (navItemId == R.id.nav_inventory) {
             return new InventoryFragment();
+        } else if (navItemId == R.id.nav_orders) {
+            return new com.example.accounting.ui.orders.OrdersFragment();
         } else if (navItemId == R.id.nav_statistics) {
             return new StatisticsFragment();
         } else if (navItemId == R.id.nav_settings) {

@@ -59,6 +59,7 @@
             android:layout_marginStart="12dp"
             android:hint="@string/actual_qty_hint"
             android:inputType="numberDecimal"
+            android:min="0"
             android:maxLines="1"
             android:textSize="18sp" />
 

@@ -10,7 +10,6 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/sales_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingStart="16dp"
@@ -22,32 +21,7 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tab_layout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            app:tabGravity="fill"
-            app:tabMode="fixed">
-
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tab_sales" />
-
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tab_purchases" />
-
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/tab_expenses" />
-        </com.google.android.material.tabs.TabLayout>
-
-        <!-- 筛选行：时间范围（单选）+ 显示已作废（独立开关） -->
+        <!-- 类型 + 时间两条筛选，横向滑动 -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -59,6 +33,52 @@
                 android:orientation="horizontal"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chip_group_type"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:chipSpacingHorizontal="6dp"
+                    app:selectionRequired="true"
+                    app:singleLine="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_type_all"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/filter_all" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_type_sale"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/tab_sales" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_type_purchase"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/tab_purchases" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_type_expense"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/tab_expenses" />
+                </com.google.android.material.chip.ChipGroup>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@color/divider" />
 
                 <com.google.android.material.chip.ChipGroup
                     android:id="@+id/chip_group_range"
@@ -92,7 +112,14 @@
                         android:text="@string/filter_month" />
 
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_last_month"
+                        android:id="@+id/chip_custom_date"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/filter_custom_date" />
+
+                    <com.google.android.material.chip.Chip
+                         android:id="@+id/chip_last_month"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

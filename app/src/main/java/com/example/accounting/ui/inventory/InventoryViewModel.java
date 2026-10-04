@@ -44,6 +44,11 @@ public class InventoryViewModel extends AndroidViewModel {
         return repository.observeCategories();
     }
 
+    /** 商品编辑页里快捷新增分类 */
+    public void addCategory(String name, com.example.accounting.data.repository.SaveCallback callback) {
+        ((AccountingApp) getApplication()).getCategoryRepository().addCategory(name, callback);
+    }
+
     public LiveData<List<Product>> getLowStockProducts() {
         return repository.observeLowStock();
     }

@@ -27,7 +27,9 @@ public interface SaleDao {
     @Query("SELECT s.*, "
             + "(SELECT COALESCE(GROUP_CONCAT(si.productName || '×' || printf('%g', si.quantityMilli / 1000.0)), '') "
             + "  FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemsSummary, "
-            + "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount "
+            + "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount, "
+            + "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, "
+            + "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents "
             + "FROM sales s "
             + "WHERE s.saleTime BETWEEN :fromMillis AND :toMillis "
             + "AND (:showVoided = 1 OR s.isDeleted = 0) "
@@ -48,7 +50,10 @@ public interface SaleDao {
     LiveData<Integer> observeCountBetween(long fromMillis, long toMillis);
 
     /** 期间销售额（首页/统计卡片）。COALESCE：无记录时 SUM 返回 NULL，当作 0 */
-    @Query("SELECT COALESCE(SUM(totalAmountCents), 0) FROM sales "
+    @Query("SELECT COALESCE(SUM(totalAmountCents), 0) + "
+            + "COALESCE((SELECT SUM(oe.differenceCents) FROM order_events oe "
+            + "JOIN sales ss ON ss.id = oe.saleId WHERE ss.isDeleted = 0 "
+            + "AND ss.saleTime BETWEEN :fromMillis AND :toMillis), 0) FROM sales "
             + "WHERE isDeleted = 0 AND saleTime BETWEEN :fromMillis AND :toMillis")
     LiveData<Long> observeTotalBetween(long fromMillis, long toMillis);
 
@@ -81,6 +86,56 @@ public interface SaleDao {
     @Query("SELECT * FROM sale_items WHERE id = :id")
     SaleItem findItemById(String id);
 
+    // ---- 订单交付（订单页） ----
+
+    /** 订单页共用的主表 + 商品摘要查询，避免列表只有空壳主表。 */
+    // 查询定义见下方两个交付查询。
+
+    /** 待交付订单（外卖/预订），新的在前 */
+    @Query("SELECT s.*, " +
+            "(SELECT COALESCE(GROUP_CONCAT(si.productName || '×' || printf('%g', si.quantityMilli / 1000.0)), '') " +
+            " FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemsSummary, " +
+             "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount, " +
+             "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, " +
+             "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents " +
+            "FROM sales s WHERE s.deliveryStatus = 1 AND s.isDeleted = 0 ORDER BY s.saleTime DESC")
+    LiveData<List<SaleWithSummary>> observePendingDelivery();
+
+    /** 最近已交付（最多 50 条） */
+    @Query("SELECT s.*, " +
+            "(SELECT COALESCE(GROUP_CONCAT(si.productName || '×' || printf('%g', si.quantityMilli / 1000.0)), '') " +
+            " FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemsSummary, " +
+             "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount, " +
+             "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, " +
+             "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents " +
+            "FROM sales s WHERE s.deliveryStatus = 2 AND s.isDeleted = 0 ORDER BY deliveredAt DESC LIMIT 50")
+    LiveData<List<SaleWithSummary>> observeDeliveredRecently();
+
+    @Query("SELECT s.*, " +
+            "(SELECT COALESCE(GROUP_CONCAT(si.productName || '×' || printf('%g', si.quantityMilli / 1000.0)), '') " +
+            " FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemsSummary, " +
+            "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount, " +
+            "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, " +
+            "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents " +
+            "FROM sales s WHERE s.deliveryStatus = 1 AND s.isDeleted = 0 " +
+            "AND s.saleTime BETWEEN :fromMillis AND :toMillis ORDER BY s.saleTime DESC")
+    LiveData<List<SaleWithSummary>> observePendingDeliveryBetween(long fromMillis, long toMillis);
+
+    @Query("SELECT s.*, " +
+            "(SELECT COALESCE(GROUP_CONCAT(si.productName || '×' || printf('%g', si.quantityMilli / 1000.0)), '') " +
+            " FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemsSummary, " +
+            "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount, " +
+            "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, " +
+            "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents " +
+            "FROM sales s WHERE s.deliveryStatus = 2 AND s.isDeleted = 0 " +
+            "AND s.saleTime BETWEEN :fromMillis AND :toMillis ORDER BY deliveredAt DESC LIMIT 50")
+    LiveData<List<SaleWithSummary>> observeDeliveredRecentlyBetween(long fromMillis, long toMillis);
+
+    /** 确认交付：状态置已交付 + 记交付时间 + 标记待同步（交付状态也要上云） */
+    @Query("UPDATE sales SET deliveryStatus = 2, deliveredAt = :deliveredAt, "
+            + "updatedAt = :deliveredAt, syncStatus = 1 WHERE id = :id")
+    void markDelivered(String id, long deliveredAt);
+
     // ---- 同步子系统专用（syncStatus: 1=PENDING 3=FAILED；主表与明细都要同步） ----
 
     @Query("SELECT * FROM sales WHERE syncStatus IN (1, 3) ORDER BY updatedAt LIMIT :limit")
@@ -103,3 +158,5 @@ public interface SaleDao {
     @Upsert
     void upsertItemFromRemote(SaleItem item);
 }
+
+

@@ -90,12 +90,50 @@ public class OcrLineParserTest {
         assertNull(OcrLineParser.parse(""));
         assertNull(OcrLineParser.parse(null));
         assertNull(OcrLineParser.parse("3.50 2")); // 没有品名
+        assertNull(OcrLineParser.parse("元 元 元"));   // 全是单位字
     }
 
     @Test
     public void 进价为0标记为无效但保留品名() {
         // 赠品行或识别噪声：不给用户静默导入，标无效让用户决定
         OcrLine line = OcrLineParser.parse("可乐 2 0");
+        assertEquals("可乐", line.productName);
+        assertFalse(line.valid);
+    }
+
+    @Test
+    public void 数量在前面_中间是品名() {
+        OcrLine line = OcrLineParser.parse("2 可乐 3.50");
+        assertEquals("可乐", line.productName);
+        assertEquals(2000L, line.quantityMilli);
+        assertEquals(350L, line.unitCostCents);
+    }
+
+    @Test
+    public void 带规格的品名() {
+        OcrLine line = OcrLineParser.parse("可乐500ml 2 3.50");
+        assertEquals("可乐500ml", line.productName);
+        assertEquals(2000L, line.quantityMilli);
+    }
+
+    @Test
+    public void 品名后粘单位字_单位字被丢弃() {
+        OcrLine line = OcrLineParser.parse("可乐 瓶 2 3.50");
+        assertEquals("可乐", line.productName);
+        assertEquals(2000L, line.quantityMilli);
+    }
+
+    @Test
+    public void 价格乘数量写法() {
+        OcrLine line = OcrLineParser.parse("可乐 3.50x2");
+        assertEquals("可乐", line.productName);
+        assertEquals(2000L, line.quantityMilli);
+        assertEquals(350L, line.unitCostCents);
+    }
+
+    @Test
+    public void 没有价格的行_保留为无效行供用户补() {
+        OcrLine line = OcrLineParser.parse("可乐 2");
         assertEquals("可乐", line.productName);
         assertFalse(line.valid);
     }
@@ -109,3 +147,5 @@ public class OcrLineParserTest {
         assertEquals("zhuozi", lines.get(1).productName);
     }
 }
+
+

@@ -8,9 +8,11 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.LiveData;
@@ -28,6 +30,7 @@ import com.example.accounting.databinding.ActivitySaleEditBinding;
 import com.example.accounting.util.MoneyUtil;
 import com.example.accounting.util.QuantityUtil;
 import com.example.accounting.util.SaleCalculator;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -52,6 +55,12 @@ public class SaleEditActivity extends AppCompatActivity
 
     /** 商品网格当前数据（查商品对象用） */
     private List<Product> currentProducts;
+
+    /** 分类筛选（货物多了以后按分类找货） */
+    private com.example.accounting.ui.common.CategoryFilter categoryFilter;
+
+    /** 最新商品列表（分类切换时重新过滤） */
+    private List<Product> latestProducts;
 
     /** 修改模式：被修改的销售单 id；开新单时为 null */
     private String editingSaleId;
@@ -79,6 +88,8 @@ public class SaleEditActivity extends AppCompatActivity
         viewModel = new ViewModelProvider(this).get(SaleEditViewModel.class);
 
         binding.toolbar.setNavigationOnClickListener(v -> finish());
+        binding.btnQuickProduct.setOnClickListener(v -> showQuickProductDialog());
+        binding.btnEditDelivery.setOnClickListener(v -> showDeliveryEditor(null));
 
         // 商品网格：2 列
         productGridAdapter = new SaleProductGridAdapter(this::onProductClicked);
@@ -88,6 +99,12 @@ public class SaleEditActivity extends AppCompatActivity
         cartAdapter = new CartAdapter(this);
         binding.cartList.setLayoutManager(new LinearLayoutManager(this));
         binding.cartList.setAdapter(cartAdapter);
+
+        categoryFilter = new com.example.accounting.ui.common.CategoryFilter(
+                binding.chipGroupCategory, () ->
+                        productGridAdapter.submitList(categoryFilter.apply(latestProducts)));
+        viewModel.getCategories().observe(this,
+                categories -> categoryFilter.setCategories(categories));
 
         subscribe();
 
@@ -109,6 +126,8 @@ public class SaleEditActivity extends AppCompatActivity
                 viewModel.prefillCart(lines);
                 viewModel.prefillDiscount(detail.sale.discountCents);
                 viewModel.prefillRecordTime(detail.sale.saleTime);
+                viewModel.prefillDelivery(detail.sale.deliveryStatus);
+                setDeliveryFields(detail.sale.deliveryAddress, detail.sale.deliveryPhone);
                 if (detail.sale.discountCents > 0) {
                     binding.inputDiscount.setText(
                             MoneyUtil.toDisplay(detail.sale.discountCents));
@@ -134,7 +153,24 @@ public class SaleEditActivity extends AppCompatActivity
             }
         });
 
-        binding.btnComplete.setOnClickListener(v -> confirmCompleteSale());
+        binding.btnComplete.setOnClickListener(v -> {
+            if (viewModel.getCartLineCount() == 0) {
+                Toast.makeText(this, R.string.need_items, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (hasInsufficientStock()) {
+                Toast.makeText(this, R.string.stock_insufficient_warning,
+                        Toast.LENGTH_LONG).show();
+            }
+            showDeliveryEditor(this::executeSaleCompletion);
+        });
+
+        viewModel.getDeliveryRequested().observe(this, requested ->
+                binding.cbDelivery.setChecked(Boolean.TRUE.equals(requested)));
+        binding.cbDelivery.setOnCheckedChangeListener((view, isChecked) ->
+                viewModel.setDeliveryRequested(isChecked));
+        setDeliveryFields("", "");
+        updateDeliverySummary();
 
         // 记账时间：显示当前选定值，点击弹出日期 + 时间选择器（补录昨天的单用）
         viewModel.getRecordTime().observe(this, time ->
@@ -142,6 +178,191 @@ public class SaleEditActivity extends AppCompatActivity
                         com.example.accounting.util.TimeUtil.formatFull(time == null
                                 ? System.currentTimeMillis() : time))));
         binding.textRecordTime.setOnClickListener(v -> showRecordTimePicker());
+    }
+
+    private void setDeliveryFields(String address, String phone) {
+        viewModel.setDeliveryAddress(address);
+        viewModel.setDeliveryPhone(phone);
+        binding.addressFields.removeAllViews();
+        binding.phoneFields.removeAllViews();
+        String[] addresses = address == null || address.trim().isEmpty()
+                ? new String[]{""} : address.split("\\n", -1);
+        String[] phones = phone == null || phone.trim().isEmpty()
+                ? new String[]{""} : phone.split("\\n", -1);
+        for (String value : addresses) addDeliveryField(false, value);
+        for (String value : phones) addDeliveryField(true, value);
+        updateDeliverySummary();
+    }
+
+    private void addDeliveryField(boolean phone, String value) {
+        LinearLayout container = phone ? binding.phoneFields : binding.addressFields;
+        addDeliveryField(phone, value, container, this::publishDeliveryFields);
+    }
+
+    private void addDeliveryField(boolean phone, String value, LinearLayout container,
+                                  Runnable publisher) {
+        boolean firstField = container.getChildCount() == 0;
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+        EditText input = new EditText(this);
+        input.setLayoutParams(new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        input.setSingleLine(true);
+        input.setText(value);
+        input.setHint(phone ? R.string.delivery_phone_hint : R.string.delivery_address_hint);
+        input.setInputType(phone ? android.text.InputType.TYPE_CLASS_PHONE
+                : android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS);
+        row.addView(input);
+
+        MaterialButton action = new MaterialButton(this);
+        action.setText(firstField ? "+" : "−");
+        action.setTextSize(20);
+        action.setMinWidth(0);
+        action.setMinHeight(0);
+        action.setPadding(8, 0, 8, 0);
+        if (firstField) {
+            action.setOnClickListener(v -> addDeliveryField(phone, "", container, publisher));
+        } else {
+            action.setOnClickListener(v -> {
+                container.removeView(row);
+                publisher.run();
+            });
+        }
+        row.addView(action);
+        container.addView(row);
+
+        input.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable s) {
+                publisher.run();
+            }
+        });
+    }
+
+    private void publishDeliveryFields() {
+        viewModel.setDeliveryAddress(joinDeliveryFields(binding.addressFields));
+        viewModel.setDeliveryPhone(joinDeliveryFields(binding.phoneFields));
+    }
+
+    private String joinDeliveryFields(LinearLayout container) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < container.getChildCount(); i++) {
+            EditText input = (EditText) ((LinearLayout) container.getChildAt(i)).getChildAt(0);
+            String value = input.getText().toString().trim();
+            if (value.isEmpty()) continue;
+            if (result.length() > 0) result.append('\n');
+            result.append(value);
+        }
+        return result.toString();
+    }
+
+    private void updateDeliverySummary() {
+        String address = joinDeliveryFields(binding.addressFields);
+        String phone = joinDeliveryFields(binding.phoneFields);
+        String summary = address.isEmpty() && phone.isEmpty()
+                ? getString(R.string.delivery_summary_empty)
+                : (address.isEmpty() ? "电话：" + phone
+                : phone.isEmpty() ? "地址：" + address
+                : "地址：" + address + " · 电话：" + phone);
+        binding.textDeliverySummary.setText(summary.replace('\n', ' '));
+    }
+
+    private void showDeliveryEditor(@Nullable Runnable afterSave) {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        form.setPadding(padding, 0, padding, 0);
+        LinearLayout addresses = new LinearLayout(this);
+        addresses.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout phones = new LinearLayout(this);
+        phones.setOrientation(LinearLayout.VERTICAL);
+        TextView addressTitle = new TextView(this);
+        addressTitle.setText(R.string.delivery_address_title);
+        TextView phoneTitle = new TextView(this);
+        phoneTitle.setText(R.string.delivery_phone_title);
+        form.addView(addressTitle);
+        form.addView(addresses);
+        form.addView(phoneTitle);
+        form.addView(phones);
+
+        String address = joinDeliveryFields(binding.addressFields);
+        String phone = joinDeliveryFields(binding.phoneFields);
+        String[] addressValues = address.isEmpty() ? new String[]{""} : address.split("\\n", -1);
+        String[] phoneValues = phone.isEmpty() ? new String[]{""} : phone.split("\\n", -1);
+        for (String value : addressValues) {
+            addDeliveryField(false, value, addresses, () -> { });
+        }
+        for (String value : phoneValues) {
+            addDeliveryField(true, value, phones, () -> { });
+        }
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.delivery_editor_title)
+                .setView(form)
+                .setPositiveButton(R.string.save, null)
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String newAddress = joinDeliveryFields(addresses);
+                    String newPhone = joinDeliveryFields(phones);
+                    setDeliveryFields(newAddress, newPhone);
+                    dialog.dismiss();
+                    if (afterSave != null) {
+                        afterSave.run();
+                    }
+                }));
+        dialog.show();
+    }
+
+    private void showQuickProductDialog() {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        int padding = (int) (20 * getResources().getDisplayMetrics().density);
+        form.setPadding(padding, 0, padding, 0);
+        EditText nameInput = new EditText(this);
+        nameInput.setHint(R.string.quick_product_name_hint);
+        EditText priceInput = new EditText(this);
+        priceInput.setHint(R.string.quick_product_price_hint);
+        priceInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
+                | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        form.addView(nameInput);
+        form.addView(priceInput);
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.quick_product)
+                .setView(form)
+                .setPositiveButton(R.string.confirm, null)
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v -> {
+                    String name = nameInput.getText().toString().trim();
+                    Long price = MoneyUtil.parseYuan(priceInput.getText().toString().trim());
+                    if (name.isEmpty()) {
+                        nameInput.setError(getString(R.string.name_required));
+                        return;
+                    }
+                    if (price == null || price < 0) {
+                        priceInput.setError(getString(R.string.price_required));
+                        return;
+                    }
+                    viewModel.createTemporaryProduct(name, price, new SaveCallback() {
+                        @Override public void onSuccess() {
+                            dialog.dismiss();
+                            Toast.makeText(SaleEditActivity.this, R.string.product_saved,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        @Override public void onError(String message) {
+                            Toast.makeText(SaleEditActivity.this, message,
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }));
+        dialog.show();
     }
 
     /** 两级选择：先选日期，再选时间。选到未来的部分由 Repository 钳制到现在 */
@@ -167,7 +388,8 @@ public class SaleEditActivity extends AppCompatActivity
         LiveData<List<Product>> productsLive = viewModel.getProducts();
         productsLive.observe(this, products -> {
             currentProducts = products;
-            productGridAdapter.submitList(products);
+            latestProducts = products;
+            productGridAdapter.submitList(categoryFilter.apply(products));
             refreshCart();
         });
 
@@ -313,7 +535,24 @@ public class SaleEditActivity extends AppCompatActivity
         }
     }
 
-    private void confirmCompleteSale() {
+    private boolean hasInsufficientStock() {
+        List<Product> products = viewModel.getProducts().getValue();
+        List<SaleCartLine> lines = viewModel.getCart().getValue();
+        if (products == null || lines == null) {
+            return false;
+        }
+        for (SaleCartLine line : lines) {
+            for (Product product : products) {
+                if (product.id.equals(line.productId)
+                        && line.quantityMilli > product.stockQuantityMilli) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void executeSaleCompletion() {
         if (viewModel.getCartLineCount() == 0) {
             Toast.makeText(this, R.string.need_items, Toast.LENGTH_SHORT).show();
             return;
@@ -358,7 +597,6 @@ public class SaleEditActivity extends AppCompatActivity
         switch (payMethod) {
             case PayMethod.WECHAT: chipId = R.id.chip_wechat; break;
             case PayMethod.ALIPAY: chipId = R.id.chip_alipay; break;
-            case PayMethod.CARD:   chipId = R.id.chip_card; break;
             case PayMethod.OTHER:  chipId = R.id.chip_other; break;
             default:               chipId = R.id.chip_cash; break;
         }
@@ -371,8 +609,6 @@ public class SaleEditActivity extends AppCompatActivity
             return PayMethod.WECHAT;
         } else if (checkedId == R.id.chip_alipay) {
             return PayMethod.ALIPAY;
-        } else if (checkedId == R.id.chip_card) {
-            return PayMethod.CARD;
         } else if (checkedId == R.id.chip_other) {
             return PayMethod.OTHER;
         } else {

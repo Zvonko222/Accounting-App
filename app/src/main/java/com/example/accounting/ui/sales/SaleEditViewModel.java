@@ -44,6 +44,32 @@ public class SaleEditViewModel extends AndroidViewModel {
     /** 整单优惠（分）。0 = 无优惠；显示的合计已扣除优惠 */
     private final MutableLiveData<Long> discountCents = new MutableLiveData<>(0L);
 
+    /** 是否需要交付（外卖/预订）：开单页勾选，订单页确认交付 */
+    private final MutableLiveData<Boolean> deliveryRequested = new MutableLiveData<>(true);
+
+    private final MutableLiveData<String> deliveryAddress = new MutableLiveData<>("");
+    private final MutableLiveData<String> deliveryPhone = new MutableLiveData<>("");
+
+    public LiveData<Boolean> getDeliveryRequested() {
+        return deliveryRequested;
+    }
+
+    public void setDeliveryRequested(boolean requested) {
+        deliveryRequested.setValue(requested);
+    }
+
+    public LiveData<String> getDeliveryAddress() {
+        return deliveryAddress;
+    }
+
+    public void setDeliveryAddress(String address) {
+        deliveryAddress.setValue(address == null ? "" : address);
+    }
+
+    public void setDeliveryPhone(String phone) {
+        deliveryPhone.setValue(phone == null ? "" : phone);
+    }
+
     /** 记账时间（毫秒）。默认当下；补录昨天的单时可选过去的时间（不允许未来） */
     private final MutableLiveData<Long> recordTime =
             new MutableLiveData<>(System.currentTimeMillis());
@@ -56,6 +82,16 @@ public class SaleEditViewModel extends AndroidViewModel {
 
     public LiveData<List<Product>> getProducts() {
         return products;
+    }
+
+    /** 商品分类（网格上方的筛选条数据源） */
+    public LiveData<List<com.example.accounting.data.db.entity.Category>> getCategories() {
+        return ((AccountingApp) getApplication()).getCategoryRepository().observeCategories();
+    }
+
+    public void createTemporaryProduct(String name, long salePriceCents, SaveCallback callback) {
+        ((AccountingApp) getApplication()).getProductRepository()
+                .createTemporaryProduct(name, salePriceCents, callback);
     }
 
     public LiveData<List<SaleCartLine>> getCart() {
@@ -92,6 +128,11 @@ public class SaleEditViewModel extends AndroidViewModel {
     /** 修改模式：回填旧单的记账时间 */
     public void prefillRecordTime(long timeMillis) {
         recordTime.setValue(timeMillis);
+    }
+
+    /** 修改模式：回填交付状态（已交付的单固定勾选，避免重开后丢失交付事实） */
+    public void prefillDelivery(int deliveryStatus) {
+        deliveryRequested.setValue(deliveryStatus != 0);
     }
 
     public int getCartLineCount() {
@@ -202,7 +243,8 @@ public class SaleEditViewModel extends AndroidViewModel {
     public void recordSale(long discountCents, int payMethod,
                            SaveCallback callback) {
         saleRepository.recordSale(currentLines(), discountCents, payMethod, null,
-                currentRecordTime(), callback);
+                currentRecordTime(), Boolean.TRUE.equals(deliveryRequested.getValue()),
+                deliveryAddress.getValue(), deliveryPhone.getValue(), callback);
     }
 
     /**
@@ -225,7 +267,8 @@ public class SaleEditViewModel extends AndroidViewModel {
     public void editSale(String saleId, long discountCents, int payMethod,
                          SaveCallback callback) {
         saleRepository.editSale(saleId, currentLines(), discountCents, payMethod,
-                currentRecordTime(), callback);
+                currentRecordTime(), Boolean.TRUE.equals(deliveryRequested.getValue()),
+                deliveryAddress.getValue(), deliveryPhone.getValue(), callback);
     }
 
     /** 当前选定的记账时间（兜底当下） */

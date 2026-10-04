@@ -62,13 +62,28 @@ public class TodayWidgetProvider extends AppWidgetProvider {
                     context.getString(R.string.widget_count_fmt, count));
             views.setOnClickPendingIntent(R.id.widget_btn_sale,
                     activityPendingIntent(context, SaleEditActivity.class, 1));
-            views.setOnClickPendingIntent(R.id.widget_btn_purchase,
-                    activityPendingIntent(context, PurchaseEditActivity.class, 2));
+
+            // 支出：打开主页并带 extra，MainActivity 收到后弹"记支出"（对话框不能跨进程直接弹）
+            Intent expenseIntent = new Intent(context,
+                    com.example.accounting.ui.main.MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    .putExtra(EXTRA_OPEN_EXPENSE, true);
+            views.setOnClickPendingIntent(R.id.widget_btn_expense,
+                    PendingIntent.getActivity(context, 2, expenseIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+
+            // 交货：直达订单页（待交付列表 + 确认交付）
+            views.setOnClickPendingIntent(R.id.widget_btn_deliver,
+                    activityPendingIntent(context,
+                            com.example.accounting.ui.orders.OrdersActivity.class, 3));
             manager.updateAppWidget(ids, views);
         });
     }
 
     /** 小组件按钮 → 打开对应页面（FLAG_IMMUTABLE 是 31+ 的强制要求） */
+    /** 与 MainActivity 约定的路由 extra（支出弹窗用） */
+    public static final String EXTRA_OPEN_EXPENSE = "extra_open_expense";
+
     private static PendingIntent activityPendingIntent(Context context,
                                                        Class<?> activityClass, int requestCode) {
         Intent intent = new Intent(context, activityClass)

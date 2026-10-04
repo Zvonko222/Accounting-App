@@ -40,6 +40,19 @@ public class ExpenseRepository {
         return expenseDao.observeTotalBetween(fromMillis, toMillis);
     }
 
+    /** 支出详情：后台查库，主线程回调 */
+    public void getExpenseById(String expenseId, ExpenseDetailCallback callback) {
+        writeExecutor.execute(() -> {
+            Expense expense = expenseDao.findById(expenseId);
+            mainHandler.post(() -> callback.onLoaded(expense));
+        });
+    }
+
+    /** 支出详情回调 */
+    public interface ExpenseDetailCallback {
+        void onLoaded(Expense expense);
+    }
+
     // ---------------- 写入 ----------------
 
     public void recordExpense(int expenseType, long amountCents,

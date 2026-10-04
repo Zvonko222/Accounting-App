@@ -3,6 +3,7 @@ package com.example.accounting.ui.purchase;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.text.TextUtils;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
@@ -124,6 +125,12 @@ public class OcrImportActivity extends AppCompatActivity implements OcrLineAdapt
                     return;
                 }
                 lineAdapter.submit(lines);
+                if (rawLines != null && !rawLines.isEmpty()) {
+                    binding.textRawLines.setVisibility(View.VISIBLE);
+                    String joined = TextUtils.join("\n", rawLines);
+                    binding.textRawLines.setText(
+                            getString(R.string.ocr_raw_lines) + "\n" + joined);
+                }
                 binding.resultSection.setVisibility(View.VISIBLE);
                 updateImportSummary();
             }

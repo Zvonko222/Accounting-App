@@ -13,6 +13,10 @@
         android:icon="@drawable/ic_nav_inventory"
         android:title="@string/nav_inventory" />
     <item
+        android:id="@+id/nav_orders"
+        android:icon="@drawable/ic_nav_orders"
+        android:title="@string/nav_orders" />
+    <item
         android:id="@+id/nav_statistics"
         android:icon="@drawable/ic_nav_statistics"
         android:title="@string/nav_statistics" />

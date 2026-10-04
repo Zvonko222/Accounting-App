@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    android:fitsSystemWindows="true" xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,6 +14,25 @@
         app:title="@string/sale_edit_title"
         app:titleTextColor="#FFFFFF"
         app:navigationIcon="?attr/homeAsUpIndicator" />
+
+    <!-- 分类筛选：横向滑动，第一个固定"全部" -->
+    <HorizontalScrollView
+        android:id="@+id/category_filter_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_category"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            app:chipSpacingHorizontal="6dp"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true" />
+    </HorizontalScrollView>
 
     <!-- 商品网格：点一下加购，尽量不碰键盘 -->
     <androidx.recyclerview.widget.RecyclerView
@@ -44,9 +64,80 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/text_delivery_summary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="@string/delivery_summary_empty"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_edit_delivery"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="32dp"
+            android:minWidth="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:text="@string/edit_delivery" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_quick_product"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:text="+"
+            android:textColor="@color/text_secondary"
+            android:contentDescription="@string/quick_product" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/address_fields"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:orientation="vertical" />
+
+    <LinearLayout
+        android:id="@+id/phone_fields"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:orientation="vertical" />
+
+    <CheckBox
+         android:id="@+id/cb_delivery"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:gravity="center_vertical">
+        android:text="@string/delivery_requested"
+        android:textSize="15sp" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -56,9 +147,8 @@
 
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chip_group_pay"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_marginStart="8dp"
             app:chipSpacingHorizontal="4dp"
             app:selectionRequired="true"
@@ -87,20 +177,14 @@
                 android:text="@string/pay_alipay" />
 
             <com.google.android.material.chip.Chip
-                android:id="@+id/chip_card"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/pay_card" />
-
-            <com.google.android.material.chip.Chip
                 android:id="@+id/chip_other"
                 style="@style/Widget.Material3.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/pay_other" />
         </com.google.android.material.chip.ChipGroup>
-    </LinearLayout>
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <!-- 记账时间：默认当下，点击可改（补录昨天的单） -->
     <TextView

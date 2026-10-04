@@ -50,6 +50,11 @@ public class PurchaseEditViewModel extends AndroidViewModel {
         return products;
     }
 
+    /** 商品分类（网格上方的筛选条数据源） */
+    public LiveData<List<com.example.accounting.data.db.entity.Category>> getCategories() {
+        return ((AccountingApp) getApplication()).getCategoryRepository().observeCategories();
+    }
+
     public LiveData<List<PurchaseCartLine>> getLines() {
         return lines;
     }

@@ -29,6 +29,11 @@
             android:parentActivityName=".ui.main.MainActivity" />
 
         <activity
+            android:name=".ui.orders.OrdersActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.main.MainActivity" />
+
+        <activity
             android:name=".ui.sales.SaleEditActivity"
             android:exported="false"
             android:parentActivityName=".ui.main.MainActivity" />
