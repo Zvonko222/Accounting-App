@@ -120,6 +120,17 @@ public interface StatisticsDao {
     com.example.accounting.data.model.ProductDailySales sumProductSalesSince(
             String productId, long fromMillis);
 
+    /** 支出构成：按支出类型占比（名称映射与 ExpenseType.displayName 保持一致） */
+    @Query("SELECT CASE e.expenseType "
+            + "WHEN 1 THEN '房租' WHEN 2 THEN '水电' WHEN 3 THEN '运费' "
+            + "WHEN 4 THEN '工资' WHEN 5 THEN '损耗' ELSE '其他' END AS name, "
+            + "COALESCE(SUM(e.amountCents), 0) AS totalCents, 0 AS quantityMilli "
+            + "FROM expenses e "
+            + "WHERE e.isDeleted = 0 AND e.expenseTime >= :fromMillis "
+            + "GROUP BY e.expenseType ORDER BY totalCents DESC")
+    LiveData<List<com.example.accounting.data.model.CategorySales>> observeExpenseTypeShareSince(
+            long fromMillis);
+
     /** 年度趋势：按月聚合（day 字段 = "yyyy-MM"，与日粒度共用 DailySales 结构） */
     @Query("SELECT strftime('%Y-%m', saleTime / 1000, 'unixepoch', 'localtime') AS day, "
             + "COALESCE(SUM(totalAmountCents), 0) AS totalCents, "

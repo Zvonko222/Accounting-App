@@ -389,6 +389,16 @@
 
 ---
 
+## 补丁 15 - 支出编辑 + 库存表导出 + git 快照
+
+1. **支出编辑**：支出详情弹窗新增"修改"按钮 → 支出弹窗预填原值（类型 chip/金额/备注）→ 保存走 updateExpense（markPending 待同步）。交互与销售/进货详情一致。
+2. **商品库存表 CSV 导出**：设置页新按钮——名称/分类/库存/单位/售价/进价/状态（需盘点/库存不足/正常），盘点与对账用。
+3. **git 快照**：工程已提交（209509d），此后并行开发出问题可 `git diff` 追踪、`git checkout -- 文件` 回退。
+
+**Files**：`ExpenseDialog`（编辑模式重载）、`ExpenseRepository`（updateExpense）、`SalesFragment`（详情编辑按钮）、`ProductDao/ProductWithCategory`（新）、`report/InventoryExporter.java`（新）、`SettingsFragment/SettingsViewModel/fragment_settings.xml`、`strings.xml`。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。

@@ -92,21 +92,19 @@ public class StatisticsViewModel extends AndroidViewModel {
                             ? statisticsDao.observeMonthlySalesSince(since)
                             : statisticsDao.observeDailySalesSince(since);
                 }));
-        categorySales = Transformations.switchMap(range, r -> {
-            if ("week".equals(r)) {
-                return statisticsDao.observeCategorySalesBetween(
-                        TimeUtil.daysAgoStart(6), TimeUtil.todayEnd());
+        categorySales = Transformations.switchMap(range, r -> Transformations.switchMap(metric, m -> {
+            long from = "week".equals(r) ? TimeUtil.daysAgoStart(6)
+                    : "year".equals(r) ? TimeUtil.yearStart()
+                    : "custom".equals(r) && customFrom.getValue() != null
+                    ? customFrom.getValue() : TimeUtil.monthStart();
+            long to = "custom".equals(r) && customTo.getValue() != null
+                    ? customTo.getValue() : TimeUtil.todayEnd();
+            // 扇形数据随指标切换：支出维度 = 支出类型占比；销售/毛利维度 = 分类占比
+            if ("expense".equals(m)) {
+                return statisticsDao.observeExpenseTypeShareSince(from);
             }
-            if ("year".equals(r)) {
-                return statisticsDao.observeCategorySalesBetween(
-                        TimeUtil.yearStart(), TimeUtil.todayEnd());
-            }
-            if ("custom".equals(r) && customFrom.getValue() != null) {
-                return statisticsDao.observeCategorySalesBetween(customFrom.getValue(),
-                        customTo.getValue() == null ? TimeUtil.todayEnd() : customTo.getValue());
-            }
-            return statisticsDao.observeCategorySalesBetween(monthStart, monthEnd);
-        });
+            return statisticsDao.observeCategorySalesBetween(from, to);
+        }));
     }
 
     public LiveData<Long> getMonthSalesTotal() {
