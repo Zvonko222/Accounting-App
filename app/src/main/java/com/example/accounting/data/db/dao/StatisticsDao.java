@@ -33,9 +33,15 @@ public interface StatisticsDao {
      * 热销商品前 5（按销售额倒序）。
      * JOIN sales 过滤已作废单的明细——作废单的销售额不应计入热销。
      */
+    /** 热销榜（销售额扣减退货冲减的按行比例分摊，口径与分类榜一致） */
     @Query("SELECT si.productName AS productName, "
             + "COALESCE(SUM(si.quantityMilli), 0) AS quantityMilli, "
-            + "COALESCE(SUM(si.lineTotalCents), 0) AS totalCents "
+            + "COALESCE(SUM(si.lineTotalCents + COALESCE("
+            + "(SELECT CAST(ROUND(si.lineTotalCents * 1.0 * oe.differenceCents "
+            + "  / s.totalAmountCents) AS INTEGER) "
+            + "  FROM order_events oe "
+            + "  WHERE oe.saleId = s.id AND oe.eventType = 1 "
+            + "  AND s.totalAmountCents > 0), 0)), 0) AS totalCents "
             + "FROM sale_items si JOIN sales s ON si.saleId = s.id "
             + "WHERE s.isDeleted = 0 AND s.saleTime >= :fromMillis "
             + "GROUP BY si.productName "
@@ -63,6 +69,57 @@ public interface StatisticsDao {
             + "GROUP BY day ORDER BY day")
     LiveData<List<DailySales>> observeDailyExpenseSince(long fromMillis);
 
+    // ---- 月度利润表导出用（一次性查询，非 LiveData） ----
+
+    @Query("SELECT strftime('%Y-%m-%d', s.saleTime / 1000, 'unixepoch', 'localtime') AS day, "
+            + "COALESCE(SUM(s.totalAmountCents - COALESCE("
+            + "(SELECT SUM(oe.differenceCents) FROM order_events oe "
+            + "  WHERE oe.saleId = s.id AND oe.eventType = 1), 0)), 0) AS totalCents, "
+            + "COUNT(*) AS saleCount "
+            + "FROM sales s "
+            + "WHERE s.isDeleted = 0 AND s.saleTime >= :fromMillis "
+            + "GROUP BY day ORDER BY day")
+    List<DailySales> listDailySalesSince(long fromMillis);
+
+    @Query("SELECT strftime('%Y-%m-%d', s.saleTime / 1000, 'unixepoch', 'localtime') AS day, "
+            + "COALESCE(SUM(si.lineTotalCents - si.unitCostCents * si.quantityMilli / 1000), 0) AS totalCents, "
+            + "0 AS saleCount "
+            + "FROM sale_items si JOIN sales s ON si.saleId = s.id "
+            + "WHERE s.isDeleted = 0 AND s.saleTime >= :fromMillis "
+            + "GROUP BY day ORDER BY day")
+    List<DailySales> listDailyProfitSince(long fromMillis);
+
+    @Query("SELECT day, COALESCE(SUM(amount), 0) AS totalCents, 0 AS saleCount FROM ("
+            + "SELECT strftime('%Y-%m-%d', purchaseTime / 1000, 'unixepoch', 'localtime') AS day, "
+            + "totalAmountCents AS amount FROM purchases "
+            + "WHERE isDeleted = 0 AND purchaseTime >= :fromMillis "
+            + "UNION ALL "
+            + "SELECT strftime('%Y-%m-%d', expenseTime / 1000, 'unixepoch', 'localtime') AS day, "
+            + "amountCents AS amount FROM expenses "
+            + "WHERE isDeleted = 0 AND expenseTime >= :fromMillis) "
+            + "GROUP BY day ORDER BY day")
+    List<DailySales> listDailyExpenseSince(long fromMillis);
+
+    /** 单商品近 N 天的每日销量/销售额（商品销量页） */
+    @Query("SELECT strftime('%Y-%m-%d', s.saleTime / 1000, 'unixepoch', 'localtime') AS day, "
+            + "COALESCE(SUM(si.quantityMilli), 0) AS quantityMilli, "
+            + "COALESCE(SUM(si.lineTotalCents), 0) AS totalCents "
+            + "FROM sale_items si JOIN sales s ON si.saleId = s.id "
+            + "WHERE si.productId = :productId AND s.isDeleted = 0 "
+            + "AND s.saleTime >= :fromMillis "
+            + "GROUP BY day ORDER BY day")
+    LiveData<List<com.example.accounting.data.model.ProductDailySales>> observeProductDailySales(
+            String productId, long fromMillis);
+
+    /** 单商品期间销售汇总（一次性查询） */
+    @Query("SELECT COALESCE(SUM(si.quantityMilli), 0) AS quantityMilli, "
+            + "COALESCE(SUM(si.lineTotalCents), 0) AS totalCents "
+            + "FROM sale_items si JOIN sales s ON si.saleId = s.id "
+            + "WHERE si.productId = :productId AND s.isDeleted = 0 "
+            + "AND s.saleTime >= :fromMillis")
+    com.example.accounting.data.model.ProductDailySales sumProductSalesSince(
+            String productId, long fromMillis);
+
     /** 年度趋势：按月聚合（day 字段 = "yyyy-MM"，与日粒度共用 DailySales 结构） */
     @Query("SELECT strftime('%Y-%m', saleTime / 1000, 'unixepoch', 'localtime') AS day, "
             + "COALESCE(SUM(totalAmountCents), 0) AS totalCents, "
@@ -72,9 +129,16 @@ public interface StatisticsDao {
             + "GROUP BY day ORDER BY day")
     LiveData<List<DailySales>> observeMonthlySalesSince(long fromMillis);
 
-    /** 本月各分类销售额（经商品所属分类聚合；未设分类归入"未分类"） */
+    /** 本月各分类销售额（经商品所属分类聚合；未设分类归入"未分类"）。
+     *  退货冲减按"该商品行占订单总额的比例"分摊到分类——退货是整单事件，
+     *  比例分摊让每个分类承担自己那一份，与流水/首页统计口径一致。 */
     @Query("SELECT COALESCE(c.name, '未分类') AS name, "
-            + "COALESCE(SUM(si.lineTotalCents), 0) AS totalCents, "
+            + "COALESCE(SUM(si.lineTotalCents + COALESCE("
+            + "(SELECT CAST(ROUND(si.lineTotalCents * 1.0 * oe.differenceCents "
+            + "  / s.totalAmountCents) AS INTEGER) "
+            + "  FROM order_events oe "
+            + "  WHERE oe.saleId = s.id AND oe.eventType = 1 "
+            + "  AND s.totalAmountCents > 0), 0)), 0) AS totalCents, "
             + "COALESCE(SUM(si.quantityMilli), 0) AS quantityMilli "
             + "FROM sale_items si "
             + "JOIN sales s ON si.saleId = s.id "

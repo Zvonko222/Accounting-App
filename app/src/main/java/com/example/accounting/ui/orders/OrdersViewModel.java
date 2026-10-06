@@ -32,8 +32,8 @@ public class OrdersViewModel extends AndroidViewModel {
     public OrdersViewModel(Application app) {
         super(app);
         saleRepository = ((AccountingApp) app).getSaleRepository();
-        pendingDelivery = Transformations.switchMap(dateRange, range ->
-                saleRepository.observePendingDeliveryBetween(range[0], range[1]));
+        // 待交付不限日期：10 天前的外卖单也欠着，必须一直显示直到交付/退货
+        pendingDelivery = saleRepository.observePendingDelivery();
         deliveredRecently = Transformations.switchMap(dateRange, range ->
                 saleRepository.observeDeliveredRecentlyBetween(range[0], range[1]));
     }

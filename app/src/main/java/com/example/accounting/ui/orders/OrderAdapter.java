@@ -106,8 +106,17 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
         } else {
             holder.binding.orderDiscount.setVisibility(View.GONE);
         }
-        long displayedTotal = sale.totalAmountCents + order.latestEventDifferenceCents;
-        holder.binding.orderTotal.setText(MoneyUtil.toYuan(displayedTotal));
+        // 退货后保留原单金额（改订单明细是错的——退货是独立的冲减事件）
+        holder.binding.orderTotal.setText(MoneyUtil.toYuan(sale.totalAmountCents));
+        if (order.latestEventType == OrderEvent.TYPE_RETURN
+                && order.latestEventDifferenceCents != 0) {
+            holder.binding.orderDeliveredTime.setText("已退货 "
+                    + MoneyUtil.toYuan(order.latestEventDifferenceCents));
+            holder.binding.orderDeliveredTime.setTextColor(
+                    ContextCompat.getColor(holder.binding.getRoot().getContext(),
+                            R.color.money_out));
+            holder.binding.orderDeliveredTime.setVisibility(View.VISIBLE);
+        }
         if (order.latestEventType == OrderEvent.TYPE_RETURN) {
             holder.binding.getRoot().setCardBackgroundColor(
                     ContextCompat.getColor(holder.binding.getRoot().getContext(), R.color.order_return_bg));

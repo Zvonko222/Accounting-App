@@ -55,6 +55,8 @@
     <string name="void_action">作废</string>
     <string name="void_sale_confirm">作废后这笔销售的库存会冲回，账目不可再修改。确定作废吗？</string>
     <string name="void_purchase_confirm">作废后这笔进货冲减库存。确定作废吗？</string>
+    <string name="ledger_returned">已退货</string>
+    <string name="ledger_pending_delivery">待交付</string>
     <string name="voided">已作废</string>
     <string name="sale_detail">销售详情</string>
     <string name="purchase_detail">进货详情</string>
@@ -116,6 +118,8 @@
     <string name="ocr_failed">识别失败</string>
     <string name="ocr_imported">已导入 %1$d 行</string>
     <string name="btn_ocr_purchase">拍照记进货</string>
+    <string name="delivery_pending_fmt">%1$d 单订单待交付，点此去订单页确认</string>
+    <string name="customer_hint">客户 / 订货人（可选）</string>
     <string name="delivery_requested">需要交付</string>
     <string name="delivery_address_title">交付地址</string>
     <string name="delivery_phone_title">联系电话</string>
@@ -140,6 +144,9 @@
     <string name="widget_add_unsupported">当前系统不支持快捷添加，请在桌面空白处长按 → 小组件里查找"售货记账"</string>
 
     <!-- 云同步 -->
+    <string name="backup_remind_fmt">已经 %1$s 天没有导出备份文件了，建议点"导出备份文件"存到电脑或网盘</string>
+    <string name="backup_remind_never">还没有导出过备份文件，建议点"导出备份文件"存到电脑或网盘</string>
+    <string name="backup_remind_title">备份提醒</string>
     <string name="sync_section">云同步（可选）</string>
     <string name="sync_hint">不配置也能正常记账和备份。配置局域网服务器后，数据会自动增量同步（离线先记账，有网自动传）。</string>
     <string name="sync_server_url">服务器地址（如 http://192.168.1.10:5080）</string>
@@ -179,10 +186,12 @@
     <string name="name_required">请填写商品名称</string>
     <string name="price_required">请填写正确的售价</string>
     <string name="product_saved">已保存</string>
+    <string name="search_ledger_hint">搜索流水（品名/供应商/备注）</string>
     <string name="search_hint">搜索商品名称</string>
     <string name="no_category">不分类</string>
     <string name="btn_edit">编辑</string>
     <string name="btn_adjust">盘点</string>
+    <string name="btn_sales_stat">销量</string>
     <string name="btn_history">记录</string>
     <string name="current_stock">当前库存</string>
     <string name="actual_qty_hint">如 0、12 或 1.5</string>
@@ -224,6 +233,9 @@
     <string name="chart_line">折线图</string>
     <string name="chart_pie">扇形图</string>
     <string name="trend_title">销售趋势</string>
+    <string name="product_sales_range">近 90 天每日销量趋势</string>
+    <string name="product_sales_summary_title">近 90 天汇总</string>
+    <string name="product_sales_summary_fmt">总销量 %1$s，销售额 %2$s</string>
     <string name="category_sales_title">分类销售额（本月）</string>
     <string name="profit_rate_fmt">毛利率：约 %1$s%%</string>
     <string name="daily_avg_fmt">日均销售额：约 %1$s</string>
@@ -245,6 +257,7 @@
     <string name="restore_done">恢复完成，应用即将重启</string>
     <string name="restore_invalid_file">备份文件无效或已损坏</string>
     <string name="restore_incompatible">备份版本不兼容，请使用同一大版本的备份</string>
+    <string name="profit_report_export">导出利润表（CSV，近 90 天）</string>
     <string name="csv_export">导出销售流水（CSV）</string>
     <string name="csv_done">导出完成</string>
     <string name="about_section">关于</string>

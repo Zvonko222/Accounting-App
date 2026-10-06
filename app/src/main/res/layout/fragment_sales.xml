@@ -21,6 +21,18 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
+        <EditText
+            android:id="@+id/search_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="4dp"
+            android:hint="@string/search_ledger_hint"
+            android:inputType="text"
+            android:maxLines="1"
+            android:textSize="15sp" />
+
         <!-- 类型 + 时间两条筛选，横向滑动 -->
         <HorizontalScrollView
             android:layout_width="match_parent"

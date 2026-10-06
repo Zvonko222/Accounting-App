@@ -133,6 +133,12 @@ public class InventoryFragment extends Fragment implements ProductAdapter.Listen
         showHistoryDialog(product);
     }
 
+    @Override
+    public void onShowSalesStat(Product product) {
+        com.example.accounting.ui.statistics.ProductSalesActivity
+                .start(requireContext(), product.id);
+    }
+
     /** 盘点修正弹窗：输入实际数量 → Repository 算差额、改库存、记台账 */
     private void showAdjustDialog(Product product) {
         com.example.accounting.databinding.DialogAdjustStockBinding dialogBinding =

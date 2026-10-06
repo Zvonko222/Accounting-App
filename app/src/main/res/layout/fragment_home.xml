@@ -201,6 +201,48 @@
                 android:textStyle="bold" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 备份提醒（超过 14 天没有导出备份文件时出现） -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_backup_remind"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="12dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="#E8F5E9"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp">
+
+            <TextView
+                android:id="@+id/text_backup_remind"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:textColor="@color/brand_primary_dark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 待交付订单提醒（有外卖/预订未交付时出现，点击直达订单页） -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_delivery_pending"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="12dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="#E3F2FD"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp">
+
+            <TextView
+                android:id="@+id/text_delivery_pending"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:textColor="#0D47A1"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 三个大按钮 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_record_sale"

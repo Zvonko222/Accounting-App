@@ -63,4 +63,9 @@ public class HomeViewModel extends AndroidViewModel {
     public LiveData<List<Product>> getLowStockProducts() {
         return productRepository.observeLowStock();
     }
+
+    /** 待交付订单（首页提醒卡数据源；用户版仓库返回带摘要的行） */
+    public LiveData<List<com.example.accounting.data.db.dao.SaleWithSummary>> getPendingDeliveryOrders() {
+        return saleRepository.observePendingDelivery();
+    }
 }

@@ -53,6 +53,15 @@ public class SettingsFragment extends Fragment {
                         }
                     });
 
+    /** 选位置导出利润表 */
+    private final ActivityResultLauncher<String> exportProfitLauncher =
+            registerForActivityResult(new ActivityResultContracts.CreateDocument("text/csv"),
+                    uri -> {
+                        if (uri != null) {
+                            viewModel.exportProfitReport(uri, new BackupToast());
+                        }
+                    });
+
     /** 选备份文件恢复 */
     private final ActivityResultLauncher<String[]> restoreLauncher =
             registerForActivityResult(new ActivityResultContracts.OpenDocument(),
@@ -82,6 +91,9 @@ public class SettingsFragment extends Fragment {
         binding.btnExportBackup.setOnClickListener(v -> exportLauncher.launch(
                 "accounting_backup_" + TimeUtil.formatForFileName(System.currentTimeMillis())
                         + ".db"));
+
+        binding.btnExportProfit.setOnClickListener(v -> exportProfitLauncher.launch(
+                "profit_report_" + TimeUtil.formatForFileName(System.currentTimeMillis()) + ".csv"));
 
         binding.btnExportCsv.setOnClickListener(v -> exportCsvLauncher.launch(
                 "sales_" + TimeUtil.formatForFileName(System.currentTimeMillis()) + ".csv"));

@@ -321,6 +321,74 @@
 
 ---
 
+## 补丁 10 - 退货账实一致 + 更改经过 + 交互统一（与并行开发的 OrderEvent 融合）
+
+**背景**：并行实现了 OrderEvent（退货/换货/其他）系统（DB v4-v7：配送地址/电话、order_events 表及金额明细列），与本会话改动交叉，已按"保留你的实现、融合需求"合并。
+
+1. **修复"退货后价格变 0.00"**：订单卡原显示 `原金额 + 退货差价(-原金额) = 0`——显示错误。现改为：**保留原单金额 + 红字"已退货 -xx"** 标签。
+2. **账实一致**：退货后首页/统计仍按原额计数（钱没退）。已统一在销售额类聚合（期间总额/日销售额/月销售额/毛利）中**扣减 order_events 的退货冲减额**，退货后统计真实下降。
+3. **详情弹窗"更改经过"**：点开销售单详情，按时间列出退货/换货轨迹（类型 + 时间 + 差价 + 备注），数据来自 order_events 表。
+4. **分类退回一级**：去掉二级目录 UI（parentId 列保留在库中兼容，不再展示/使用）。
+5. **流水交互统一**：点击 = 详情（销售/进货/支出**三类都有**详情弹窗，支出含删除按钮）；长按 = 作废（售/进）/删除（支出），全部有确认。
+6. **订单交付**：开单页"此单需要交付"勾选 → 底部新 Tab"订单"（待交付确认交付 / 最近已交付）；Migration v3-v7（含并行写的 order_events）已完整还原并融合。
+7. **小组件三按钮**：出售 / 支出 / 交货（支出经 MainActivity extra 路由弹窗，交货直达订单页）。
+
+**Files**：`Migrations.java`（v2-v7 完整链，从 schema 留档重建）、`Sale.java/SaleDao/SaleRepository`（交付 + 退货统计扣减）、`OrderAdapter`（退货显示修复）、`SalesFragment/SalesViewModel`（统一交互 + 更改经过 + 支出详情）、`CategoryFilter/CategoryManageDialog/CategoryManageAdapter/ProductEditActivity`（一级化）、`widget_today.xml/TodayWidgetProvider/MainActivity`（三按钮）、`OrderEvent/OrderEventDao/OrdersFragment/OrdersViewModel/OrderAdapter`（并行实现，保留并融合）。
+
+**How to test**：订单页对已交付订单点"退货"→ 订单卡保留原价并红字"已退货"，销售详情弹窗底部出现"更改经过"轨迹，首页/统计当日销售额扣减退货金额；长按流水行 = 作废/删除；小组件三按钮各自直达。
+
+---
+
+## 补丁 11 - 交付闭环补完 + 流水状态徽标 + 首页提醒
+
+1. **交付联系方式录入**：开单页勾选"此单需要交付"后显示地址/电话输入框（写入你并行加的 sales.deliveryAddress/deliveryPhone 列）；修改重开时新输入为空则保留旧值。
+2. **流水行状态徽标**：销售行显示"已退货"（红）/ "待交付"（橙）标签，与订单页状态一致（LedgerItem 增加 latestEventType/deliveryStatus）。
+3. **首页待交付提醒**：有未交付订单时首页亮蓝色提醒卡"N 单订单待交付"，点击直达订单页。
+
+**Files**：`SaleRepository/SaleEditViewModel/SaleEditActivity/activity_sale_edit.xml`（交付联系方式）、`LedgerItem/LedgerAdapter/item_ledger.xml/SalesViewModel`（状态徽标）、`HomeViewModel/HomeFragment/fragment_home.xml`（提醒卡）。
+
+**注**：与并行开发再次撞名（delivery_address_hint 等），已去重并采用你的版本；本机模拟器不稳未做最终装机截图，构建与 37/37 测试全绿，APK 在 app/build/outputs/apk/debug/。
+
+---
+
+## 补丁 12 - 利润表导出 + 流水搜索 + 备份提醒
+
+1. **月度利润表 CSV 导出**：设置页新增"导出利润表（CSV，近 90 天）"——按日汇总销售额（已扣退货）/毛利/支出/当日净结余，顶部合计行；`data/repository/report/ProfitReportExporter`（零依赖，SAF 导出），StatisticsDao 加三个一次性查询。**注意：报表是给人看的对账文件，备份才是恢复数据的整库文件，二者互补。**
+2. **流水页搜索**：按品名/供应商/备注实时过滤当页流水（客户端过滤）。
+3. **首页备份提醒**：超过 14 天没导出备份文件（或从未导出）时首页亮绿色提醒卡，点击直达设置页导出入口；导出时间记在 `last_export_at`（BackupManager.getLastExportTime）。
+
+**Files**：`report/ProfitReportExporter.java`（新）、`StatisticsDao`（三个一次性查询）、`SettingsFragment/SettingsViewModel/fragment_settings.xml`、`SalesFragment/fragment_sales.xml`（搜索）、`HomeFragment/HomeViewModel/fragment_home.xml`（提醒）、`BackupManager`、`strings.xml`。
+
+**How to test（模拟器验证通过）**：首页见备份提醒卡 → 点击直达设置；设置页导出利润表 → CSV 用 Excel 打开核对合计；流水页搜索框输入"cola" → 只剩含 cola 的行。
+
+---
+
+## 补丁 13 - 分类榜扣退货 + 商品销量页 + DiffUtil 顺滑刷新
+
+1. **分类销售额榜扣减退货**：退货是整单事件，按"商品行占订单总额比例"分摊到各分类（SQL 相关子查询），榜单与首页/流水口径一致。
+2. **商品销量页**（新）：库存卡新增第 4 个按钮"销量"→ 近 90 天每日销量/销售额柱状图 + 汇总（`ProductSalesActivity`，复用 TrendChartView；DAO 新增单商品日聚合查询）。
+3. **DiffUtil 顺滑刷新**：LedgerAdapter / ProductAdapter / StockMovementAdapter 转 **ListAdapter**（按 id 识别、内容变化才重绑，列表更新不再闪烁）；小列表（热销榜前 5、分类榜）保持 notifyDataSetChanged（收益为零）；购物车两个 Adapter 因行内可变对象维持原状（显式重绑更可预期）。
+4. **确认 order_events 云同步**：你并行开发的 order_events 同步 handler（SyncEngine TABLE_ORDER_EVENTS）已就位，无需重做。
+
+**Files**：`StatisticsDao`（分类扣减 + 商品日聚合 + 汇总）、`ProductDailySales.java`（新）、`ProductSalesActivity/activity_product_sales.xml`（新）、`item_product.xml/ProductAdapter/InventoryFragment`（销量入口）、`LedgerAdapter/ProductAdapter/StockMovementAdapter`（ListAdapter 化）、`strings.xml`。
+
+**How to test**：库存卡点"销量"看趋势与汇总；退货一笔后看统计页分类榜金额下降；翻流水/库存列表更新时行不再闪烁。
+
+---
+
+## 补丁 14 - 退货订单交付一致性 + 订单页时间筛选 + 客户录入 + 热销榜扣退货
+
+1. **退货的待交付订单不再出现**（事务+SQL 双保险）：退货事件写入时，若该单还在"待交付"则同步取消（deliveryStatus 1→0）；待交付查询排除任何带退货事件的订单——退了货就不用再送。
+2. **订单页时间筛选**：待交付列表**不限日期**（10 天前的外卖单也是欠着的）；"最近已交付"加时间 Chip（今天/近7天/本月）。OrdersViewModel 暴露 setDateRange。
+3. **客户/订货人录入**：开单页勾选"需要交付"后显示"客户/订货人"输入框，随单保存（sales.customerName），订单卡与详情回填。
+4. **热销榜扣退货**：与分类榜同构的按行比例分摊，退货后热销榜金额同步下降。
+
+**Files**：`SaleDao`（待交付排除退货 + observePendingDeliveryAll）、`SaleRepository/SaleEditViewModel/SaleEditActivity/activity_sale_edit.xml`（客户名贯通）、`OrdersViewModel`（待交付不限日期 + setDateRange）、`StatisticsDao`（热销榜扣减）、`strings.xml`。
+
+**How to test**：开单勾选"需要交付"并填客户/地址/电话 → 订单页出现该单 → 对它退货 → 该单从待交付消失；已交付单退货 → 卡片红字"已退货 −¥xx"且详情有轨迹；统计热销榜与分类榜金额同步下降。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。

@@ -80,6 +80,7 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract SyncStateDao syncStateDao();
 
+
     /** 进程内单例：多个实例指向同一文件会造成写入竞争 */
     private static volatile AppDatabase instance;
 

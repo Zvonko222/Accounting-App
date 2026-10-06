@@ -98,7 +98,10 @@ public interface SaleDao {
              "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount, " +
              "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, " +
              "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents " +
-            "FROM sales s WHERE s.deliveryStatus = 1 AND s.isDeleted = 0 ORDER BY s.saleTime DESC")
+            "FROM sales s WHERE s.deliveryStatus = 1 AND s.isDeleted = 0 "
+            + "AND NOT EXISTS (SELECT 1 FROM order_events oe "
+            + "  WHERE oe.saleId = s.id AND oe.eventType = 1) "
+            + "ORDER BY s.saleTime DESC")
     LiveData<List<SaleWithSummary>> observePendingDelivery();
 
     /** 最近已交付（最多 50 条） */
@@ -118,8 +121,23 @@ public interface SaleDao {
             "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, " +
             "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents " +
             "FROM sales s WHERE s.deliveryStatus = 1 AND s.isDeleted = 0 " +
+            "AND NOT EXISTS (SELECT 1 FROM order_events oe " +
+            "  WHERE oe.saleId = s.id AND oe.eventType = 1) " +
             "AND s.saleTime BETWEEN :fromMillis AND :toMillis ORDER BY s.saleTime DESC")
     LiveData<List<SaleWithSummary>> observePendingDeliveryBetween(long fromMillis, long toMillis);
+
+    /** 全部待交付（不限日期——10 天前的外卖单也是欠着的；排除已退货单） */
+    @Query("SELECT s.*, " +
+            "(SELECT COALESCE(GROUP_CONCAT(si.productName || '×' || printf('%g', si.quantityMilli / 1000.0)), '') " +
+            " FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemsSummary, " +
+            "(SELECT COUNT(*) FROM sale_items si WHERE si.saleId = s.id AND si.isDeleted = 0) AS itemCount, " +
+            "COALESCE((SELECT oe.eventType FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventType, " +
+            "COALESCE((SELECT oe.differenceCents FROM order_events oe WHERE oe.saleId = s.id ORDER BY oe.eventTime DESC LIMIT 1), 0) AS latestEventDifferenceCents " +
+            "FROM sales s WHERE s.deliveryStatus = 1 AND s.isDeleted = 0 " +
+            "AND NOT EXISTS (SELECT 1 FROM order_events oe " +
+            "  WHERE oe.saleId = s.id AND oe.eventType = 1) " +
+            "ORDER BY s.saleTime DESC")
+    LiveData<List<SaleWithSummary>> observePendingDeliveryAll();
 
     @Query("SELECT s.*, " +
             "(SELECT COALESCE(GROUP_CONCAT(si.productName || '×' || printf('%g', si.quantityMilli / 1000.0)), '') " +

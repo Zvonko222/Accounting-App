@@ -150,6 +150,12 @@ public class SaleRepository {
                     orderEventDao.insert(event);
 
                     if (eventType == OrderEvent.TYPE_RETURN) {
+                        // 待交付订单退货 = 订单取消：不再出现在"待交付"列表
+                        if (sale.deliveryStatus == 1) {
+                            sale.deliveryStatus = 0;
+                            sale.markPending();
+                            saleDao.update(sale);
+                        }
                         List<SaleItem> items = saleDao.listItems(saleId);
                         List<StockMovement> movements = new ArrayList<>();
                         for (SaleItem item : items) {
@@ -231,12 +237,12 @@ public class SaleRepository {
     public void recordSale(List<SaleCartLine> lines, long discountCents,
                            int payMethod, String note, long recordTimeMillis,
                             boolean deliveryRequested, String deliveryAddress, String deliveryPhone,
-                            SaveCallback callback) {
+                            String customerName, SaveCallback callback) {
         writeExecutor.execute(() -> {
             try {
                 database.runInTransaction(() -> insertSaleLocked(lines, discountCents,
                         payMethod, note, recordTimeMillis, deliveryRequested, deliveryAddress,
-                        deliveryPhone));
+                        deliveryPhone, customerName));
                 notifySuccess(callback);
             } catch (Exception e) {
                 notifyError(callback, e.getMessage());
@@ -292,7 +298,8 @@ public class SaleRepository {
      */
     public void editSale(String saleId, List<SaleCartLine> lines, long discountCents,
                          int payMethod, long recordTimeMillis, boolean deliveryRequested,
-                         String deliveryAddress, String deliveryPhone, SaveCallback callback) {
+                         String deliveryAddress, String deliveryPhone, String customerName,
+                         SaveCallback callback) {
         writeExecutor.execute(() -> {
             try {
                 database.runInTransaction(() -> {
@@ -302,7 +309,8 @@ public class SaleRepository {
                     Long deliveredAt = wasDelivered ? old.deliveredAt : null;
                     voidSaleLocked(saleId);
                     insertSaleLocked(lines, discountCents, payMethod, null,
-                            recordTimeMillis, deliveryRequested, deliveryAddress, deliveryPhone);
+                            recordTimeMillis, deliveryRequested, deliveryAddress, deliveryPhone,
+                            customerName);
                     if (wasDelivered) {
                         Sale renewed = saleDao.listDirtyItemsForSync(1).isEmpty()
                                 ? saleDao.findById(saleId) : null;
@@ -342,7 +350,8 @@ public class SaleRepository {
     /** 插入一张销售单及其全部影响。调用方必须已处于事务中 */
     private void insertSaleLocked(List<SaleCartLine> lines, long discountCents,
                                   int payMethod, String note, long recordTimeMillis,
-                                  boolean deliveryRequested, String deliveryAddress, String deliveryPhone) {
+                                  boolean deliveryRequested, String deliveryAddress, String deliveryPhone,
+                                  String customerName) {
         if (lines == null || lines.isEmpty()) {
             throw new IllegalArgumentException("本单没有任何商品");
         }
@@ -371,6 +380,12 @@ public class SaleRepository {
         sale.payMethod = payMethod;
         sale.note = normalizeNote(note);
         sale.deliveryStatus = deliveryRequested ? 1 : 0;
+        sale.customerName = customerName;
+        // 配送联系方式：仅待交付订单有意义；新输入为空时保留编辑前的旧值
+        sale.deliveryAddress = (deliveryAddress == null || deliveryAddress.isEmpty())
+                ? sale.deliveryAddress : deliveryAddress;
+        sale.deliveryPhone = (deliveryPhone == null || deliveryPhone.isEmpty())
+                ? sale.deliveryPhone : deliveryPhone;
         sale.deliveryAddress = normalizeNote(deliveryAddress);
         sale.deliveryPhone = normalizeNote(deliveryPhone);
         saleDao.insert(sale);

@@ -13,7 +13,7 @@ public final class Migrations {
     private Migrations() {
     }
 
-    /** v2：分类支持二级目录（新增 parentId，null = 顶级） */
+    /** v2：分类目录层级列（当前 UI 按用户要求使用一级，列保留兼容） */
     public static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
@@ -21,7 +21,7 @@ public final class Migrations {
         }
     };
 
-    /** v3：销售单支持交付确认（外卖/预订单标记待交付，订单页确认交付） */
+    /** v3：销售单交付确认（deliveryStatus / deliveredAt） */
     public static final Migration MIGRATION_2_3 = new Migration(2, 3) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
@@ -30,7 +30,7 @@ public final class Migrations {
         }
     };
 
-    /** v4：销售单保存交付地址 */
+    /** v4：销售单配送地址（订单交付） */
     public static final Migration MIGRATION_3_4 = new Migration(3, 4) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
@@ -38,7 +38,7 @@ public final class Migrations {
         }
     };
 
-    /** v5：销售单保存联系电话 */
+    /** v5：销售单配送电话 */
     public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
@@ -46,33 +46,38 @@ public final class Migrations {
         }
     };
 
-    /** v6：订单事件（退货、换货及其他售后事件） */
+    /** v6：订单事件表（退货/换货/其他，随销售单级联删除） */
     public static final Migration MIGRATION_5_6 = new Migration(5, 6) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
-            db.execSQL("CREATE TABLE IF NOT EXISTS order_events ("
-                    + "id TEXT NOT NULL, saleId TEXT, eventType INTEGER NOT NULL, "
-                    + "eventTime INTEGER NOT NULL, amountCents INTEGER NOT NULL, note TEXT, "
-                    + "createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, "
-                    + "isDeleted INTEGER NOT NULL, deletedAt INTEGER, syncStatus INTEGER NOT NULL, "
-                    + "lastSyncedAt INTEGER, retryCount INTEGER NOT NULL, lastSyncError TEXT, "
-                    + "PRIMARY KEY(id), FOREIGN KEY(saleId) REFERENCES sales(id) ON DELETE CASCADE)");
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_order_events_saleId ON order_events(saleId)");
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_order_events_eventTime ON order_events(eventTime)");
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_order_events_syncStatus ON order_events(syncStatus)");
+            db.execSQL("CREATE TABLE IF NOT EXISTS `order_events` (`id` TEXT NOT NULL, "
+                    + "`saleId` TEXT, `eventType` INTEGER NOT NULL, `eventTime` INTEGER NOT NULL, "
+                    + "`amountCents` INTEGER NOT NULL, `note` TEXT, `createdAt` INTEGER NOT NULL, "
+                    + "`updatedAt` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, "
+                    + "`deletedAt` INTEGER, `syncStatus` INTEGER NOT NULL, `lastSyncedAt` INTEGER, "
+                    + "`retryCount` INTEGER NOT NULL, `lastSyncError` TEXT, "
+                    + "PRIMARY KEY(`id`), "
+                    + "FOREIGN KEY(`saleId`) REFERENCES `sales`(`id`) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE )");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_order_events_saleId` "
+                    + "ON `order_events` (`saleId`)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_order_events_eventTime` "
+                    + "ON `order_events` (`eventTime`)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_order_events_syncStatus` "
+                    + "ON `order_events` (`syncStatus`)");
         }
     };
 
-    /** v7：订单事件保存原货、新货与差额 */
+    /** v7：退货/换货的金额与商品明细字段 */
     public static final Migration MIGRATION_6_7 = new Migration(6, 7) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
-            db.execSQL("ALTER TABLE order_events ADD COLUMN originalAmountCents INTEGER NOT NULL DEFAULT 0");
-            db.execSQL("ALTER TABLE order_events ADD COLUMN replacementAmountCents INTEGER NOT NULL DEFAULT 0");
-            db.execSQL("ALTER TABLE order_events ADD COLUMN differenceCents INTEGER NOT NULL DEFAULT 0");
             db.execSQL("ALTER TABLE order_events ADD COLUMN originalProductId TEXT");
             db.execSQL("ALTER TABLE order_events ADD COLUMN replacementProductId TEXT");
-            db.execSQL("ALTER TABLE order_events ADD COLUMN quantityMilli INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE order_events ADD COLUMN originalAmountCents INTEGER");
+            db.execSQL("ALTER TABLE order_events ADD COLUMN replacementAmountCents INTEGER");
+            db.execSQL("ALTER TABLE order_events ADD COLUMN differenceCents INTEGER");
+            db.execSQL("ALTER TABLE order_events ADD COLUMN quantityMilli INTEGER");
         }
     };
 }

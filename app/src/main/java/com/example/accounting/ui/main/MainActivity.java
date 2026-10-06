@@ -85,6 +85,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** 供首页提醒卡跳转：打开设置页（备份导出入口在这里） */
+    public void openSettings() {
+        binding.bottomNav.setSelectedItemId(R.id.nav_settings);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();

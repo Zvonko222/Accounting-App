@@ -126,6 +126,10 @@ public class SaleEditActivity extends AppCompatActivity
                 viewModel.prefillCart(lines);
                 viewModel.prefillDiscount(detail.sale.discountCents);
                 viewModel.prefillRecordTime(detail.sale.saleTime);
+                viewModel.prefillCustomer(detail.sale.customerName);
+                if (detail.sale.customerName != null) {
+                    binding.inputCustomer.setText(detail.sale.customerName);
+                }
                 viewModel.prefillDelivery(detail.sale.deliveryStatus);
                 setDeliveryFields(detail.sale.deliveryAddress, detail.sale.deliveryPhone);
                 if (detail.sale.discountCents > 0) {
@@ -165,10 +169,21 @@ public class SaleEditActivity extends AppCompatActivity
             showDeliveryEditor(this::executeSaleCompletion);
         });
 
-        viewModel.getDeliveryRequested().observe(this, requested ->
-                binding.cbDelivery.setChecked(Boolean.TRUE.equals(requested)));
+        viewModel.getDeliveryRequested().observe(this, requested -> {
+            boolean show = Boolean.TRUE.equals(requested);
+            binding.cbDelivery.setChecked(show);
+            // 勾选"需要交付"才展开客户/地址/电话（少输入框，页面更干净）
+            binding.layoutCustomer.setVisibility(show ? View.VISIBLE : View.GONE);
+        });
         binding.cbDelivery.setOnCheckedChangeListener((view, isChecked) ->
                 viewModel.setDeliveryRequested(isChecked));
+        binding.inputCustomer.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void afterTextChanged(android.text.Editable s) {
+                viewModel.setCustomerName(s.toString());
+            }
+        });
         setDeliveryFields("", "");
         updateDeliverySummary();
 

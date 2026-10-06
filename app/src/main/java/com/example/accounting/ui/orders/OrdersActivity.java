@@ -14,6 +14,10 @@ import com.google.android.material.appbar.MaterialToolbar;
  */
 public class OrdersActivity extends AppCompatActivity {
 
+    public static void start(android.content.Context context) {
+        context.startActivity(new android.content.Intent(context, OrdersActivity.class));
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

@@ -30,8 +30,20 @@ public class LedgerItem {
     /** 单据 id（点开详情用） */
     public final String id;
 
+    /** 销售单的最新事件类型（0=无 1=退货 2=换货），仅销售行有值 */
+    public final int latestEventType;
+
+    /** 交付状态（0=无需 1=待交付 2=已交付），仅销售行有值 */
+    public final int deliveryStatus;
+
     public LedgerItem(int type, long time, String title, String subtitle,
                       long amountCents, boolean deleted, String id) {
+        this(type, time, title, subtitle, amountCents, deleted, id, 0, 0);
+    }
+
+    public LedgerItem(int type, long time, String title, String subtitle,
+                      long amountCents, boolean deleted, String id,
+                      int latestEventType, int deliveryStatus) {
         this.type = type;
         this.time = time;
         this.title = title;
@@ -39,5 +51,7 @@ public class LedgerItem {
         this.amountCents = amountCents;
         this.deleted = deleted;
         this.id = id;
+        this.latestEventType = latestEventType;
+        this.deliveryStatus = deliveryStatus;
     }
 }

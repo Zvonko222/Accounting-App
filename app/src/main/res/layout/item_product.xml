@@ -93,6 +93,15 @@
                 android:textSize="15sp" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_sales_stat"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/btn_sales_stat"
+                android:textSize="15sp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_history"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="0dp"

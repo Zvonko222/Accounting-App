@@ -7,6 +7,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.accounting.R;
@@ -22,7 +24,7 @@ import java.util.List;
  * 商品列表 Adapter：一行商品卡片，提供 编辑 / 盘点 / 记录 三个按钮。
  * Fragment 通过 listener 接口拿到点击事件，Adapter 自己不做业务判断。
  */
-public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> {
+public class ProductAdapter extends ListAdapter<Product, ProductAdapter.ProductViewHolder> {
 
     /** 列表按钮的回调，由 InventoryFragment 实现 */
     public interface Listener {
@@ -31,24 +33,34 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         void onAdjustStock(Product product);
 
         void onShowHistory(Product product);
+
+        void onShowSalesStat(Product product);
     }
 
-    private final List<Product> products = new ArrayList<>();
     private final Listener listener;
 
     public ProductAdapter(Listener listener) {
+        super(DIFF);
         this.listener = listener;
     }
 
-    /** Room 的 LiveData 每次发新列表都调用这里 */
-    public void submitList(List<Product> newProducts) {
-        products.clear();
-        if (newProducts != null) {
-            products.addAll(newProducts);
-        }
-        notifyDataSetChanged();
-    }
+    /** DiffUtil：按商品 id 识别同一行 */
+    private static final DiffUtil.ItemCallback<Product> DIFF =
+            new DiffUtil.ItemCallback<Product>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull Product a, @NonNull Product b) {
+                    return a.id.equals(b.id);
+                }
 
+                @Override
+                public boolean areContentsTheSame(@NonNull Product a, @NonNull Product b) {
+                    return a.stockQuantityMilli == b.stockQuantityMilli
+                            && a.salePriceCents == b.salePriceCents
+                            && a.purchasePriceCents == b.purchasePriceCents
+                            && a.name.equals(b.name)
+                            && a.isDeleted == b.isDeleted;
+                }
+            };
     @NonNull
     @Override
     public ProductViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -59,12 +71,7 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
 
     @Override
     public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
-        holder.bind(products.get(position));
-    }
-
-    @Override
-    public int getItemCount() {
-        return products.size();
+        holder.bind(getItem(position));
     }
 
     class ProductViewHolder extends RecyclerView.ViewHolder {
@@ -121,6 +128,8 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
                     v -> listener.onAdjustStock(product));
             binding.btnHistory.setOnClickListener(
                     v -> listener.onShowHistory(product));
+            binding.btnSalesStat.setOnClickListener(
+                    v -> listener.onShowSalesStat(product));
         }
     }
 }

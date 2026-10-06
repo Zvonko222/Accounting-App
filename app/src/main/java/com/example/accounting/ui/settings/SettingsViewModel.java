@@ -78,6 +78,35 @@ public class SettingsViewModel extends AndroidViewModel {
         backupManager.exportSalesCsvTo(destination, callback);
     }
 
+    /** 导出月度利润表：后台执行，完成后记录"上次导出"时间 */
+    public void exportProfitReport(Uri destination, BackupManager.BackupCallback callback) {
+        ((AccountingApp) getApplication()).getDatabaseWriteExecutor().execute(() -> {
+            try {
+                int rows = com.example.accounting.data.repository.report.ProfitReportExporter
+                        .export(getDatabase(), destination, getApplication());
+                com.example.accounting.data.sync.SyncEngine.saveConfig(
+                        getApplication(), KEY_LAST_EXPORT, String.valueOf(System.currentTimeMillis()));
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                        callback.onDone("共 " + rows + " 天"));
+            } catch (Exception e) {
+                String message = e.getMessage() == null ? "导出失败" : e.getMessage();
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                        callback.onError(message));
+            }
+        });
+    }
+
+    public long getLastExportTime() {
+        String v = com.example.accounting.data.sync.SyncEngine
+                .getConfigStatic(getApplication(), KEY_LAST_EXPORT);
+        if (v == null) return 0;
+        try {
+            return Long.parseLong(v);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     // ---------------- 分类管理 ----------------
 
     private CategoryRepository getCategoryRepository() {
@@ -99,10 +128,15 @@ public class SettingsViewModel extends AndroidViewModel {
         getCategoryRepository().disableCategory(categoryId, callback);
     }
 
+    private com.example.accounting.data.db.AppDatabase getDatabase() {
+        return ((AccountingApp) getApplication()).getDatabase();
+    }
+
     // ---------------- 云同步 ----------------
 
     private static final String KEY_URL = "server_url";
     private static final String KEY_KEY = "server_key";
+    private static final String KEY_LAST_EXPORT = "last_export_at";
     private static final String KEY_LAST_SYNC_AT = "last_sync_at";
     private static final String KEY_LAST_SYNC_ERROR = "last_sync_error";
 

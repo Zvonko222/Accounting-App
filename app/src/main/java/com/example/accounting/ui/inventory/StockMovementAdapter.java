@@ -5,6 +5,8 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.accounting.R;
@@ -13,23 +15,33 @@ import com.example.accounting.databinding.ItemStockMovementBinding;
 import com.example.accounting.util.QuantityUtil;
 import com.example.accounting.util.TimeUtil;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 库存台账 Adapter：一行 = 一次变动（类型 + 时间 + 带符号数量）。
+ * ListAdapter + DiffUtil：按日志 id 识别，只重绑变化的行。
  */
 public class StockMovementAdapter
-        extends RecyclerView.Adapter<StockMovementAdapter.MovementViewHolder> {
+        extends ListAdapter<StockMovement, StockMovementAdapter.MovementViewHolder> {
 
-    private final List<StockMovement> movements = new ArrayList<>();
+    /** DiffUtil：按日志 id 识别同一行，内容一致不重绑 */
+    private static final DiffUtil.ItemCallback<StockMovement> DIFF =
+            new DiffUtil.ItemCallback<StockMovement>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull StockMovement a, @NonNull StockMovement b) {
+                    return a.id.equals(b.id);
+                }
 
-    public void submitList(List<StockMovement> newMovements) {
-        movements.clear();
-        if (newMovements != null) {
-            movements.addAll(newMovements);
-        }
-        notifyDataSetChanged();
+                @Override
+                public boolean areContentsTheSame(@NonNull StockMovement a, @NonNull StockMovement b) {
+                    return a.changeQuantityMilli == b.changeQuantityMilli
+                            && a.changeType == b.changeType
+                            && a.movementTime == b.movementTime;
+                }
+            };
+
+    public StockMovementAdapter() {
+        super(DIFF);
     }
 
     @NonNull
@@ -42,12 +54,7 @@ public class StockMovementAdapter
 
     @Override
     public void onBindViewHolder(@NonNull MovementViewHolder holder, int position) {
-        holder.bind(movements.get(position));
-    }
-
-    @Override
-    public int getItemCount() {
-        return movements.size();
+        holder.bind(getItem(position));
     }
 
     static class MovementViewHolder extends RecyclerView.ViewHolder {

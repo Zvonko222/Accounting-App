@@ -23,6 +23,8 @@ import com.example.accounting.util.MoneyUtil;
 import com.example.accounting.util.TimeUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.util.List;
+
 /**
  * 流水页：一条按时间排序的大流水（销售/进货/支出混排），
  * 类型 Chip + 时间 Chip 两条筛选，点击行看详情（可修改/作废）。
@@ -34,6 +36,9 @@ public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
     private SalesViewModel viewModel;
 
     private LedgerAdapter ledgerAdapter;
+
+    /** 搜索关键字（空 = 不过滤）；过滤作用于当前已加载的流水 */
+    private String searchKeyword = "";
 
     @Nullable
     @Override
@@ -55,9 +60,19 @@ public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
 
         // 合并大流水：筛选条件变化自动重绑查询并重新合成
         viewModel.getLedger().observe(getViewLifecycleOwner(), items -> {
-            ledgerAdapter.submitList(items);
+            ledgerAdapter.submitList(applySearch(items));
             binding.emptyHint.setVisibility(
-                    items == null || items.isEmpty() ? View.VISIBLE : View.GONE);
+                    filteredEmpty(items) ? View.VISIBLE : View.GONE);
+        });
+
+        // 搜索：按标题/摘要包含关键字过滤（当页流水）
+        binding.searchInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void afterTextChanged(android.text.Editable s) {
+                searchKeyword = s.toString().trim();
+                ledgerAdapter.submitList(applySearch(viewModel.getLedger().getValue()));
+            }
         });
 
         setupFilterChips();
@@ -127,6 +142,27 @@ public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
                     calendar.get(java.util.Calendar.DAY_OF_MONTH)).show();
         }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH),
                 calendar.get(java.util.Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private boolean filteredEmpty(List<LedgerItem> items) {
+        List<LedgerItem> filtered = applySearch(items);
+        return filtered == null || filtered.isEmpty();
+    }
+
+    /** 搜索过滤：标题或摘要包含关键字（不分大小写）；无关键字原样返回 */
+    private List<LedgerItem> applySearch(List<LedgerItem> items) {
+        if (searchKeyword.isEmpty() || items == null) {
+            return items;
+        }
+        String kw = searchKeyword.toLowerCase();
+        List<LedgerItem> result = new java.util.ArrayList<>();
+        for (LedgerItem item : items) {
+            String haystack = (item.title + " " + item.subtitle).toLowerCase();
+            if (haystack.contains(kw)) {
+                result.add(item);
+            }
+        }
+        return result;
     }
 
     // ---------------- LedgerAdapter.Listener ----------------
@@ -208,6 +244,30 @@ public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
         dialogBinding.detailTotal.setText(getString(R.string.total_label) + " "
                 + MoneyUtil.toYuan(detail.sale.totalAmountCents));
 
+        // 更改经过：退货/换货等订单事件随时间列出（详情弹窗的核心诉求）
+        ((com.example.accounting.AccountingApp) requireActivity().getApplication())
+                .getSaleRepository()
+                .observeOrderEvents(detail.sale.id)
+                .observe(getViewLifecycleOwner(), events -> {
+                    if (events == null || events.isEmpty()) {
+                        return;
+                    }
+                    StringBuilder trail = new StringBuilder("\n\n更改经过：");
+                    for (com.example.accounting.data.db.entity.OrderEvent e : events) {
+                        trail.append("\n· ").append(eventTypeName(e.eventType))
+                                .append(" ").append(TimeUtil.formatFull(e.eventTime));
+                        if (e.eventType == com.example.accounting.data.db.entity.OrderEvent.TYPE_RETURN) {
+                            trail.append("  −").append(MoneyUtil.toYuan(Math.abs(e.differenceCents)));
+                        } else if (e.eventType == com.example.accounting.data.db.entity.OrderEvent.TYPE_EXCHANGE) {
+                            trail.append("  差价 ").append(MoneyUtil.toYuan(e.differenceCents));
+                        }
+                        if (e.note != null && !e.note.isEmpty()) {
+                            trail.append("（").append(e.note).append("）");
+                        }
+                    }
+                    dialogBinding.detailInfo.append(trail.toString());
+                });
+
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.sale_detail)
                 .setView(dialogBinding.getRoot());
@@ -220,6 +280,16 @@ public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
                     confirmVoidSale(detail.sale.id));
         }
         builder.setNegativeButton(R.string.close, null).show();
+    }
+
+    private String eventTypeName(int eventType) {
+        if (eventType == com.example.accounting.data.db.entity.OrderEvent.TYPE_RETURN) {
+            return "退货";
+        }
+        if (eventType == com.example.accounting.data.db.entity.OrderEvent.TYPE_EXCHANGE) {
+            return "换货";
+        }
+        return "其他变更";
     }
 
     private void confirmVoidSale(String saleId) {

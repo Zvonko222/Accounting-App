@@ -153,6 +153,19 @@ public class BackupManager {
                 + latest.getName() + "（" + latest.length() + " 字节）";
     }
 
+    /** 上次导出备份文件/报表的时间（毫秒），从未导出返回 0（首页备份提醒用） */
+    public long getLastExportTime() {
+        String value = AppDatabase.getInstance(context).syncStateDao().getValue("last_export_at");
+        if (value == null) {
+            return 0;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     /** 上次本机备份时间（毫秒），从未备份返回 null */
     public Long getLastBackupTime() {
         String value = syncStateDao.getValue("last_backup_at");

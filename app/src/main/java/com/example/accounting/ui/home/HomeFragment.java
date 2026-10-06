@@ -56,6 +56,44 @@ public class HomeFragment extends Fragment {
         viewModel.getLowStockProducts().observe(getViewLifecycleOwner(),
                 this::showLowStockWarning);
 
+        // 备份提醒：超过 14 天没有导出备份文件就提醒（本地自动备份不等于脱离手机）
+        ((com.example.accounting.AccountingApp) requireActivity().getApplication())
+                .getDatabaseWriteExecutor().execute(() -> {
+                    long lastExport = ((com.example.accounting.AccountingApp)
+                            requireActivity().getApplication())
+                            .getBackupManager().getLastExportTime();
+                    long now = System.currentTimeMillis();
+                    boolean remind = lastExport == 0
+                            || now - lastExport > 14L * 24 * 60 * 60 * 1000;
+                    requireActivity().runOnUiThread(() -> {
+                        if (!remind) {
+                            binding.cardBackupRemind.setVisibility(View.GONE);
+                            return;
+                        }
+                        binding.textBackupRemind.setText(lastExport == 0
+                                ? getString(R.string.backup_remind_never)
+                                : getString(R.string.backup_remind_fmt,
+                                        String.valueOf((now - lastExport) / (24 * 60 * 60 * 1000))));
+                        binding.cardBackupRemind.setVisibility(View.VISIBLE);
+                    });
+                });
+        binding.cardBackupRemind.setOnClickListener(v ->
+                ((com.example.accounting.ui.main.MainActivity) requireActivity()).openSettings());
+
+        // 待交付提醒：有未交付的外卖/预订就亮出来，点击直达订单页
+        viewModel.getPendingDeliveryOrders().observe(getViewLifecycleOwner(), orders -> {
+            int n = orders == null ? 0 : orders.size();
+            if (n > 0) {
+                binding.textDeliveryPending.setText(
+                        getString(R.string.delivery_pending_fmt, n));
+                binding.cardDeliveryPending.setVisibility(View.VISIBLE);
+            } else {
+                binding.cardDeliveryPending.setVisibility(View.GONE);
+            }
+        });
+        binding.cardDeliveryPending.setOnClickListener(v ->
+                com.example.accounting.ui.orders.OrdersActivity.start(requireContext()));
+
         binding.btnRecordSale.setOnClickListener(v ->
                 SaleEditActivity.start(requireContext()));
         binding.btnRecordPurchase.setOnClickListener(v ->

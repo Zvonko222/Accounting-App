@@ -135,6 +135,12 @@ public class SaleEditViewModel extends AndroidViewModel {
         deliveryRequested.setValue(deliveryStatus != 0);
     }
 
+    /** 修改模式：回填配送联系方式 */
+    public void prefillDeliveryContact(String address, String phone) {
+        deliveryAddress.setValue(address == null ? "" : address);
+        deliveryPhone.setValue(phone == null ? "" : phone);
+    }
+
     public int getCartLineCount() {
         List<SaleCartLine> lines = cart.getValue();
         return lines == null ? 0 : lines.size();
@@ -244,7 +250,29 @@ public class SaleEditViewModel extends AndroidViewModel {
                            SaveCallback callback) {
         saleRepository.recordSale(currentLines(), discountCents, payMethod, null,
                 currentRecordTime(), Boolean.TRUE.equals(deliveryRequested.getValue()),
-                deliveryAddress.getValue(), deliveryPhone.getValue(), callback);
+                deliveryAddress.getValue(), deliveryPhone.getValue(),
+                currentCustomerName(), callback);
+    }
+
+    /** 客户/订货人（可选，随单保存，订单页显示） */
+    private final MutableLiveData<String> customerName = new MutableLiveData<>("");
+
+    public LiveData<String> getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String name) {
+        customerName.setValue(name == null ? "" : name.trim());
+    }
+
+    private String currentCustomerName() {
+        String name = customerName.getValue();
+        return (name == null || name.isEmpty()) ? null : name;
+    }
+
+    /** 修改模式：回填客户名 */
+    public void prefillCustomer(String name) {
+        customerName.setValue(name == null ? "" : name);
     }
 
     /**
@@ -268,7 +296,8 @@ public class SaleEditViewModel extends AndroidViewModel {
                          SaveCallback callback) {
         saleRepository.editSale(saleId, currentLines(), discountCents, payMethod,
                 currentRecordTime(), Boolean.TRUE.equals(deliveryRequested.getValue()),
-                deliveryAddress.getValue(), deliveryPhone.getValue(), callback);
+                deliveryAddress.getValue(), deliveryPhone.getValue(),
+                currentCustomerName(), callback);
     }
 
     /** 当前选定的记账时间（兜底当下） */

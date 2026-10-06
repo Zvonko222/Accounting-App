@@ -173,7 +173,8 @@ public class SalesViewModel extends AndroidViewModel {
             for (SaleWithSummary s : salesCache) {
                 String title = "销售 · " + PayMethod.displayName(s.sale.payMethod);
                 items.add(new LedgerItem(LedgerItem.TYPE_SALE, s.sale.saleTime, title,
-                        s.itemsSummary, s.sale.totalAmountCents, s.sale.isDeleted, s.sale.id));
+                        s.itemsSummary, s.sale.totalAmountCents, s.sale.isDeleted, s.sale.id,
+                        s.latestEventType, s.sale.deliveryStatus));
             }
         }
         if (f.typeFilter == LedgerItem.TYPE_PURCHASE || f.typeFilter == TYPE_ALL) {
