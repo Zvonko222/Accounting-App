@@ -30,6 +30,7 @@
     <string name="order_event_saved">订单事件已记录</string>
     <string name="order_exchange_original">选择原商品</string>
     <string name="order_exchange_replacement">选择换入商品</string>
+    <string name="order_exchange_price">替换品单价（元，可改）</string>
     <string name="order_exchange_quantity">换货数量</string>
     <string name="deliver_confirm">确认这单已交付？金额 </string>
     <string name="delivered_done">已确认交付</string>
@@ -159,6 +160,7 @@
     <string name="sync_status_pending">待上行 %1$d 行</string>
     <string name="sync_last_time">上次同步：%1$s</string>
     <string name="sync_last_error">上次失败：%1$s</string>
+    <string name="sync_detail_title">待同步明细</string>
     <string name="sync_last_never">从未同步（或未配置服务器）</string>
 
     <!-- 商品 -->

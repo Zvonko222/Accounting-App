@@ -19,6 +19,7 @@ import com.example.accounting.data.db.entity.OrderEvent;
 import com.example.accounting.data.db.entity.Product;
 import com.example.accounting.data.db.entity.Sale;
 import com.example.accounting.data.db.entity.SaleItem;
+import com.example.accounting.util.MoneyUtil;
 import com.example.accounting.util.QuantityUtil;
 import com.example.accounting.data.db.dao.SaleWithSummary;
 import com.example.accounting.databinding.FragmentOrdersBinding;
@@ -166,9 +167,16 @@ public class OrdersFragment extends Fragment implements OrderAdapter.Listener {
         quantity.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
                 | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         quantity.setText(QuantityUtil.toDisplay(original.quantityMilli));
+        // 替换品实际价格：默认商品现售价，可按实际谈价修改
+        EditText replacementPrice = new EditText(requireContext());
+        replacementPrice.setHint(R.string.order_exchange_price);
+        replacementPrice.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
+                | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        replacementPrice.setText(MoneyUtil.toDisplay(replacement.salePriceCents));
         EditText note = new EditText(requireContext());
         note.setHint(R.string.order_event_note_hint);
         form.addView(quantity);
+        form.addView(replacementPrice);
         form.addView(note);
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(original.productName + " → " + replacement.name)
@@ -179,8 +187,9 @@ public class OrdersFragment extends Fragment implements OrderAdapter.Listener {
                         quantity.setError(getString(R.string.amount_required));
                         return;
                     }
+                    Long price = MoneyUtil.parseYuan(replacementPrice.getText().toString());
                     viewModel.recordExchange(order.sale.id, original.productId, replacement.id,
-                            quantityMilli, note.getText().toString(), new SaveCallback() {
+                            quantityMilli, price, note.getText().toString(), new SaveCallback() {
                                 @Override public void onSuccess() {
                                     Toast.makeText(requireContext(), R.string.order_event_saved,
                                             Toast.LENGTH_SHORT).show();

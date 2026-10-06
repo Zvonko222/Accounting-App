@@ -105,6 +105,17 @@ public class SaleRepository {
     public void recordOrderEvent(String saleId, int eventType, String originalProductId,
                                  String replacementProductId, long quantityMilli,
                                  String note, SaveCallback callback) {
+        recordOrderEvent(saleId, eventType, originalProductId, replacementProductId, quantityMilli,
+                null, note, callback);
+    }
+
+    /**
+     * 带替换品实际价格的换货入口（replacementPriceCents 为 null 时用商品现售价）。
+     * 实际谈价往往与商品档案价不同，所以允许按单指定。
+     */
+    public void recordOrderEvent(String saleId, int eventType, String originalProductId,
+                                 String replacementProductId, long quantityMilli,
+                                 Long replacementPriceCents, String note, SaveCallback callback) {
         writeExecutor.execute(() -> {
             try {
                 database.runInTransaction(() -> {
@@ -142,8 +153,10 @@ public class SaleRepository {
                         Product replacement = productDao.findById(replacementProductId);
                         if (replacement == null) throw new IllegalStateException("换货商品不存在");
                         long safeQuantity = quantityMilli <= 0 ? originalItem.quantityMilli : quantityMilli;
+                        long actualReplacementPrice = replacementPriceCents != null
+                                ? replacementPriceCents : replacement.salePriceCents;
                         event.originalAmountCents = originalItem.unitPriceCents * safeQuantity / 1000;
-                        event.replacementAmountCents = replacement.salePriceCents * safeQuantity / 1000;
+                        event.replacementAmountCents = actualReplacementPrice * safeQuantity / 1000;
                         event.differenceCents = event.replacementAmountCents - event.originalAmountCents;
                         event.amountCents = event.differenceCents;
                     }

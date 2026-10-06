@@ -226,6 +226,37 @@ public class SettingsViewModel extends AndroidViewModel {
         });
     }
 
+    /** 各表待同步行数明细（同步状态详情弹窗用），后台查询后 post */
+    public void loadPendingDetail(android.content.Context context) {
+        ((AccountingApp) getApplication()).getDatabaseWriteExecutor().execute(() -> {
+            com.example.accounting.data.db.AppDatabase db =
+                    ((AccountingApp) getApplication()).getDatabase();
+            StringBuilder detail = new StringBuilder();
+            addRow(detail, "商品", db.productDao().listDirtyForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "分类", db.categoryDao().listDirtyForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "销售单", db.saleDao().listDirtyForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "销售明细", db.saleDao().listDirtyItemsForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "进货单", db.purchaseDao().listDirtyForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "进货明细", db.purchaseDao().listDirtyItemsForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "支出", db.expenseDao().listDirtyForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "库存台账", db.stockMovementDao().listDirtyForSync(Integer.MAX_VALUE).size());
+            addRow(detail, "订单事件", db.orderEventDao().listDirtyForSync(Integer.MAX_VALUE).size());
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                    pendingDetail.postValue(detail.toString()));
+        });
+    }
+
+    private void addRow(StringBuilder sb, String name, int count) {
+        sb.append(name).append("：").append(count).append(" 行\n");
+    }
+
+    public androidx.lifecycle.LiveData<String> getPendingDetail() {
+        return pendingDetail;
+    }
+
+    private final androidx.lifecycle.MutableLiveData<String> pendingDetail =
+            new androidx.lifecycle.MutableLiveData<>("");
+
     /** 汇总同步状态：待上行行数 + 上次同步时间/错误 */
     public void refreshSyncStatus(android.content.Context context) {
         ((AccountingApp) getApplication()).getDatabaseWriteExecutor().execute(() -> {

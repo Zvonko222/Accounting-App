@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.accounting.R;
 import com.example.accounting.data.repository.backup.BackupManager;
+import com.example.accounting.data.sync.SyncEngine;
 import com.example.accounting.databinding.FragmentSettingsBinding;
 import com.example.accounting.util.AppRestarter;
 import com.example.accounting.util.TimeUtil;
@@ -176,6 +177,13 @@ public class SettingsFragment extends Fragment {
         });
 
         // 状态行：上次同步时间 + 错误 + 待上行行数
+        binding.textSyncStatus.setOnClickListener(v -> showSyncDetailDialog());
+        viewModel.getPendingDetail().observe(getViewLifecycleOwner(), detail -> {
+            if (detail != null && !detail.isEmpty()) {
+                binding.textSyncStatus.append("\n" + detail.trim());
+            }
+        });
+
         viewModel.getLastSyncAt().observe(getViewLifecycleOwner(), this::updateSyncStatusText);
         viewModel.getLastSyncError().observe(getViewLifecycleOwner(), s -> updateSyncStatusText(null));
         viewModel.getPendingCount().observe(getViewLifecycleOwner(), c -> updateSyncStatusText(null));
@@ -206,6 +214,30 @@ public class SettingsFragment extends Fragment {
             text.append("\n").append(getString(R.string.sync_status_pending, pending));
         }
         binding.textSyncStatus.setText(text);
+    }
+
+    /** 同步状态详情：各表待同步行数 + 手动重传提示 */
+    private void showSyncDetailDialog() {
+        viewModel.loadPendingDetail(requireContext());
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.sync_detail_title)
+                .setMessage(viewModel.getPendingDetail().getValue())
+                .setPositiveButton(R.string.sync_now, (dialog, which) -> {
+                    Toast.makeText(requireContext(), R.string.sync_now, Toast.LENGTH_SHORT).show();
+                    viewModel.syncNow(requireContext(), new SyncEngine.Callback() {
+                        @Override
+                        public void onDone(String message) {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                })
+                .setNegativeButton(R.string.close, null)
+                .show();
     }
 
     private androidx.appcompat.app.AppCompatActivity requireAppCompatActivity() {

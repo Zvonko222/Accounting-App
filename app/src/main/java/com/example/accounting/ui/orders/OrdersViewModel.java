@@ -69,10 +69,11 @@ public class OrdersViewModel extends AndroidViewModel {
 
     public void recordExchange(String saleId, String originalProductId,
                                String replacementProductId, long quantityMilli,
-                               String note, SaveCallback callback) {
+                               Long replacementPriceCents, String note, SaveCallback callback) {
         saleRepository.recordOrderEvent(saleId,
                 com.example.accounting.data.db.entity.OrderEvent.TYPE_EXCHANGE,
-                originalProductId, replacementProductId, quantityMilli, note, callback);
+                originalProductId, replacementProductId, quantityMilli,
+                replacementPriceCents, note, callback);
     }
 }
 
