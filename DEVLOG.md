@@ -399,6 +399,17 @@
 
 ---
 
+## 补丁 16 - 流水日期分组 + 支出构成扇形
+
+1. **流水按日期分组**：同一天的流水上方显示日期小标题（跨天自动出新标题），翻账像翻按天记账的账本。实现：LedgerAdapter 内部把流水行展开为 [日期头, 行...]（伪行 id = "header_日期"），DiffUtil 统一按 id 识别，HeaderViewType 区分两种行型；搜索/筛选/状态徽标不受影响。
+2. **支出构成扇形**：统计页"支出"指标 + 扇形图 = 各支出类型占比（房租/水电/运费/工资/损耗/其他，新查询 observeExpenseTypeShareSince），扇区带名称与百分比标注；销售/毛利维度扇形仍是分类占比。兼容你并行加的自定义区间（custom）。
+
+**Files**：`LedgerAdapter`（日期分组重构）、`item_ledger_header.xml`（新）、`StatisticsDao`（类型占比查询）、`StatisticsViewModel`（categorySales 二维 switchMap：区间×指标）、`strings.xml`。
+
+**How to test**：流水页按天分节显示日期；统计页选"支出"+扇形图 → 各类型占比标注。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。
