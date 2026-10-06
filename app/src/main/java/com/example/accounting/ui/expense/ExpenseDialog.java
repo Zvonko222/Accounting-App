@@ -9,6 +9,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 
 import com.example.accounting.R;
+import com.example.accounting.data.db.entity.Expense;
 import com.example.accounting.data.model.ExpenseType;
 import com.example.accounting.data.repository.ExpenseRepository;
 import com.example.accounting.data.repository.SaveCallback;
@@ -18,6 +19,9 @@ import com.google.android.material.chip.Chip;
 
 /**
  * "记支出"弹窗：选类型（chip 免打字）→ 输金额 → 保存。
+ * 两种模式：
+ * - show(context)：新建支出；
+ * - show(context, expense)：编辑已有支出（预填，保存走 update）。
  * 首页和流水页都用这一个入口，行为一致。
  */
 public final class ExpenseDialog {
@@ -26,6 +30,10 @@ public final class ExpenseDialog {
     }
 
     public static void show(Context context) {
+        show(context, null);
+    }
+
+    public static void show(Context context, Expense editing) {
         DialogRecordExpenseBinding binding = DialogRecordExpenseBinding
                 .inflate(LayoutInflater.from(context));
 
@@ -38,13 +46,24 @@ public final class ExpenseDialog {
             chip.setCheckable(true);
             chip.setTag(options[i]);
             binding.chipGroupExpenseType.addView(chip);
-            if (i == 0) {
+            if (editing != null && options[i] == editing.expenseType) {
+                chip.setChecked(true); // 编辑模式：预填原类型
+            } else if (i == 0) {
                 chip.setChecked(true);
             }
         }
 
+        if (editing != null) {
+            binding.inputExpenseAmount.setText(MoneyUtil.toDisplay(editing.amountCents));
+            if (editing.note != null) {
+                binding.inputExpenseNote.setText(editing.note);
+            }
+        }
+
         AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle(R.string.expense_title)
+                .setTitle(editing != null
+                        ? R.string.expense_edit_title
+                        : R.string.expense_title)
                 .setView(binding.getRoot())
                 .setPositiveButton(R.string.save, null)   // 先置空，点按时校验，不合法不关闭
                 .setNegativeButton(R.string.cancel, null)
@@ -70,6 +89,27 @@ public final class ExpenseDialog {
                 ExpenseRepository repository = ((com.example.accounting.AccountingApp) app)
                         .getExpenseRepository();
                 String note = String.valueOf(binding.inputExpenseNote.getText()).trim();
+
+                if (editing != null) {
+                    // 编辑模式：更新原记录
+                    repository.updateExpense(editing.id, expenseType, amount,
+                            note.isEmpty() ? null : note, new SaveCallback() {
+                                @Override
+                                public void onSuccess() {
+                                    Toast.makeText(context,
+                                            R.string.expense_updated, Toast.LENGTH_SHORT).show();
+                                    dialog.dismiss();
+                                }
+
+                                @Override
+                                public void onError(String message) {
+                                    Toast.makeText(context,
+                                            context.getString(R.string.backup_failed) + "：" + message,
+                                            Toast.LENGTH_LONG).show();
+                                }
+                            });
+                    return;
+                }
 
                 repository.recordExpense(expenseType, amount,
                         note.isEmpty() ? null : note, new SaveCallback() {

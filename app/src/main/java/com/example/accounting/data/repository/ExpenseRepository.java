@@ -40,6 +40,27 @@ public class ExpenseRepository {
         return expenseDao.observeTotalBetween(fromMillis, toMillis);
     }
 
+    /** 编辑支出：更新类型/金额/备注并标记待同步（本地库先行，同步随后） */
+    public void updateExpense(String expenseId, int expenseType, long amountCents,
+                              String note, SaveCallback callback) {
+        writeExecutor.execute(() -> {
+            try {
+                Expense expense = expenseDao.findById(expenseId);
+                if (expense == null || expense.isDeleted) {
+                    throw new IllegalStateException("支出不存在或已删除");
+                }
+                expense.expenseType = expenseType;
+                expense.amountCents = amountCents;
+                expense.note = (note == null || note.isEmpty()) ? null : note;
+                expense.markPending();
+                expenseDao.update(expense);
+                notifySuccess(callback);
+            } catch (Exception e) {
+                notifyError(callback, e.getMessage());
+            }
+        });
+    }
+
     /** 支出详情：后台查库，主线程回调 */
     public void getExpenseById(String expenseId, ExpenseDetailCallback callback) {
         writeExecutor.execute(() -> {

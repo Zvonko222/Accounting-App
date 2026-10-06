@@ -212,6 +212,8 @@
     <string name="expense_type_label">支出类型</string>
     <string name="amount_label">金额（元）</string>
     <string name="expense_note_label">备注（可选）</string>
+    <string name="expense_edit_title">编辑支出</string>
+    <string name="expense_updated">已更新</string>
     <string name="expense_saved">支出已保存</string>
     <string name="amount_required">请填写正确的金额</string>
 
@@ -258,6 +260,7 @@
     <string name="restore_invalid_file">备份文件无效或已损坏</string>
     <string name="restore_incompatible">备份版本不兼容，请使用同一大版本的备份</string>
     <string name="profit_report_export">导出利润表（CSV，近 90 天）</string>
+    <string name="inventory_export">导出商品库存表（CSV）</string>
     <string name="csv_export">导出销售流水（CSV）</string>
     <string name="csv_done">导出完成</string>
     <string name="about_section">关于</string>

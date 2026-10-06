@@ -96,6 +96,22 @@ public class SettingsViewModel extends AndroidViewModel {
         });
     }
 
+    /** 导出商品库存表（盘点用） */
+    public void exportInventory(Uri destination, BackupManager.BackupCallback callback) {
+        ((AccountingApp) getApplication()).getDatabaseWriteExecutor().execute(() -> {
+            try {
+                int count = com.example.accounting.data.repository.report.InventoryExporter
+                        .export(getDatabase(), destination, getApplication());
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                        callback.onDone("共 " + count + " 种商品"));
+            } catch (Exception e) {
+                String message = e.getMessage() == null ? "导出失败" : e.getMessage();
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                        callback.onError(message));
+            }
+        });
+    }
+
     public long getLastExportTime() {
         String v = com.example.accounting.data.sync.SyncEngine
                 .getConfigStatic(getApplication(), KEY_LAST_EXPORT);

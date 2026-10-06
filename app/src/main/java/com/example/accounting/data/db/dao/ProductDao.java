@@ -56,6 +56,12 @@ public interface ProductDao {
     @Update
     void update(Product product);
 
+    /** 库存表导出用（一次性全量，含分类名与停用状态） */
+    @Query("SELECT p.*, COALESCE(c.name, '') AS categoryName FROM products p "
+            + "LEFT JOIN categories c ON p.categoryId = c.id "
+            + "WHERE p.isDeleted = 0 ORDER BY p.name")
+    List<ProductWithCategory> listAllWithCategory();
+
     // ---- 同步子系统专用（syncStatus: 1=PENDING 3=FAILED） ----
 
     @Query("SELECT * FROM products WHERE syncStatus IN (1, 3) ORDER BY updatedAt LIMIT :limit")

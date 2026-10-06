@@ -194,10 +194,14 @@ public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
                 .setTitle(R.string.expense_title)
                 .setMessage(message);
         if (!expense.isDeleted) {
+            // 编辑：打开支出弹窗预填原值（与其他单据"修改"一致的交互）
+            builder.setPositiveButton(R.string.btn_modify, (dialog, which) ->
+                    com.example.accounting.ui.expense.ExpenseDialog
+                            .show(requireContext(), expense));
             builder.setNeutralButton(R.string.delete, (dialog, which) ->
                     viewModel.deleteExpense(expense.id, new SaveToast()));
         }
-        builder.setPositiveButton(R.string.close, null).show();
+        builder.setNegativeButton(R.string.close, null).show();
     }
 
     @Override
