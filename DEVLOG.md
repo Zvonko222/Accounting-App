@@ -410,6 +410,16 @@
 
 ---
 
+## 补丁 17 - 换货实际价格 + 同步状态详情弹窗
+
+1. **换货替换品可改实际谈价**：换货表单新增"替换品单价"输入（默认商品现售价），差价按实际价格计算（recordOrderEvent 加 replacementPriceCents 参数）。
+2. **同步状态详情弹窗**：设置页"同步状态"行可点击 → 弹出各表待同步行数明细（商品/分类/销售/进货/支出/台账/订单事件九张表），弹窗内可直接"立即同步"。
+3. **退货订单不再出现在待交付**（融合并行改动）：事务里退货时同步取消待交付状态 + 待交付查询排除退货单。
+
+**Files**：`SaleRepository`（recordOrderEvent 价格参数 + observePendingDeliveryAll）、`SaleDao`（待交付排除退货）、`OrdersViewModel/OrdersFragment`（价格输入 + 待交付不限日期）、`SettingsFragment/SettingsViewModel`（同步详情弹窗）、`OrderEventDao`（补 listDirtyForSync）、`strings.xml`。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。
