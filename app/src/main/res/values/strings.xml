@@ -240,6 +240,7 @@
     <string name="product_sales_range">近 90 天每日销量趋势</string>
     <string name="product_sales_summary_title">近 90 天汇总</string>
     <string name="product_sales_summary_fmt">总销量 %1$s，销售额 %2$s</string>
+    <string name="expense_share_title">支出构成（按类型）</string>
     <string name="category_sales_title">分类销售额（本月）</string>
     <string name="profit_rate_fmt">毛利率：约 %1$s%%</string>
     <string name="daily_avg_fmt">日均销售额：约 %1$s</string>

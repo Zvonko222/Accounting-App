@@ -293,13 +293,15 @@ public class BackupManager {
                 AppDatabase db = AppDatabase.getInstance(context);
                 StringBuilder csv = new StringBuilder();
                 csv.append('\uFEFF');
-                csv.append("销售时间,商品,数量,单价(元),小计(元),收款方式,优惠(元),合计(元)\n");
+                csv.append("销售时间,商品,数量,单价(元),小计(元),收款方式,优惠(元),合计(元),状态\n");
 
-                // JOIN 出"单 + 明细"，按销售时间排序，导出文件可直接阅读
+                // JOIN 出"单 + 明细"，按销售时间排序；带退货差价列（冲减行口径与统计一致）
                 List<String> rows = new ArrayList<>();
                 try (Cursor cursor = db.query(new androidx.sqlite.db.SimpleSQLiteQuery(
                         "SELECT s.saleTime, si.productName, si.quantityMilli, si.unitPriceCents, "
-                                + "si.lineTotalCents, s.payMethod, s.discountCents, s.totalAmountCents "
+                                + "si.lineTotalCents, s.payMethod, s.discountCents, s.totalAmountCents, "
+                                + "COALESCE((SELECT SUM(oe.differenceCents) FROM order_events oe "
+                                + "  WHERE oe.saleId = s.id AND oe.eventType = 1), 0) "
                                 + "FROM sales s JOIN sale_items si ON si.saleId = s.id "
                                 + "WHERE s.isDeleted = 0 ORDER BY s.saleTime"))) {
                     while (cursor.moveToNext()) {
@@ -311,6 +313,7 @@ public class BackupManager {
                         int payMethod = cursor.getInt(5);
                         long discount = cursor.getLong(6);
                         long total = cursor.getLong(7);
+                        long returnDiff = cursor.getLong(8);
 
                         rows.add(TimeUtil.formatFull(saleTime) + ","
                                 + quote(product) + ","
@@ -319,7 +322,15 @@ public class BackupManager {
                                 + quote(MoneyText(lineTotal)) + ","
                                 + quote(com.example.accounting.data.model.PayMethod.displayName(payMethod)) + ","
                                 + quote(MoneyText(discount)) + ","
-                                + quote(MoneyText(total)));
+                                + quote(MoneyText(total)) + ","
+                                + quote(returnDiff == 0 ? "" : "已退货 " + MoneyText(returnDiff)));
+
+                        // 退货冲减独立成行（负数），让 CSV 合计与统计口径一致
+                        if (returnDiff != 0) {
+                            rows.add(TimeUtil.formatFull(saleTime) + ","
+                                    + quote("（退货冲减）") + ",,,,,"
+                                    + quote(MoneyText(returnDiff)));
+                        }
                     }
                 }
                 for (String row : rows) {

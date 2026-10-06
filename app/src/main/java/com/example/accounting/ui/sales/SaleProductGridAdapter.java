@@ -4,11 +4,14 @@ import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.accounting.R;
 import com.example.accounting.data.db.entity.Product;
 import com.example.accounting.databinding.ItemSaleProductBinding;
 import com.example.accounting.util.MoneyUtil;
+import com.example.accounting.util.QuantityUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +57,12 @@ public class SaleProductGridAdapter
         holder.binding.productName.setText(product.name);
         holder.binding.productPrice.setText(
                 MoneyUtil.toYuan(product.salePriceCents) + "/" + product.unit);
+        // 当前库存：负库存红字"需盘点"，提醒先盘点再卖
+        holder.binding.productStock.setText(
+                QuantityUtil.toDisplay(product.stockQuantityMilli) + product.unit);
+        holder.binding.productStock.setTextColor(ContextCompat.getColor(
+                holder.binding.getRoot().getContext(),
+                product.stockQuantityMilli < 0 ? R.color.money_out : R.color.text_secondary));
         holder.binding.getRoot().setOnClickListener(v -> listener.onProductClicked(product));
     }
 

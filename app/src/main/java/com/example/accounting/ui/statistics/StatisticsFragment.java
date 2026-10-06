@@ -101,11 +101,20 @@ public class StatisticsFragment extends Fragment {
         });
 
         // 分类占比扇形图：数据随区间变化
+        // 支出构成榜：仅支出维度显示（数据与扇形相同，榜单即图例）
+        CategorySalesAdapter expenseShareAdapter = new CategorySalesAdapter();
+        binding.expenseShareList.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.expenseShareList.setAdapter(expenseShareAdapter);
+
         viewModel.getCategorySales().observe(getViewLifecycleOwner(), items -> {
             categorySalesAdapter.submitList(items);
             if (binding.pieChart.getVisibility() == View.VISIBLE) {
                 binding.pieChart.setData(items);
             }
+            boolean expenseMode = binding.chipGroupMetric.getCheckedChipId() == R.id.chip_metric_expense;
+            binding.expenseShareCard.setVisibility(
+                    expenseMode && items != null && !items.isEmpty() ? View.VISIBLE : View.GONE);
+            expenseShareAdapter.submitList(items);
         });
 
         topProductAdapter = new TopProductAdapter();
