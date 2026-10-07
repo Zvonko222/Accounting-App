@@ -442,6 +442,19 @@
 
 ---
 
+## 补丁 20 - 部分退货 + 利润表区间选择 + 热销榜单品归属 + 支出构成榜
+
+1. **部分退货（按单品）**：订单售后菜单新增"单品退货"入口——选商品 → 数量（默认整行，可改小）→ 备注；differenceCents = -单价×退量，只回补该商品库存；部分退货不影响交付状态（整单退才取消待交付）。统计扣减 SQL 自动生效（SUM 差价）。
+2. **统计 SQL 双模式**：分类榜/热销榜/首页统计的退货扣减改为"单品退精确归属（按 originalProductId/数量）+ 整单退按行比例分摊"并存。
+3. **利润表区间选择**：导出前先选区间（本月/上月/近90天/本年），CSV 标题与统计起点随区间变化。
+4. **支出构成榜 + 扇形**：统计页支出维度显示类型占比榜与扇形图（兼容你并行加的自定义区间）。
+
+**Files**：`SaleRepository`（RETURN 分支重构：partialReturn 路径）、`StatisticsDao`（四处 SQL 单品归属）、`OrdersFragment/OrdersViewModel`（价格输入 + 单品入口）、`SettingsFragment/SettingsViewModel`（利润区间）、`report/ProfitReportExporter`（fromMillis/rangeLabel）、`data_check/ProfitReport strings`。
+
+**How to test**：订单页售后菜单 → 单品退货 → 选商品改数量 → 流水与统计扣减对应金额、库存回补对应数量；利润表导出选"上月" → CSV 只含上月行。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。
