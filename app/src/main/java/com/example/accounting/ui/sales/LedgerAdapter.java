@@ -72,23 +72,44 @@ public class LedgerAdapter extends ListAdapter<LedgerItem, RecyclerView.ViewHold
         super.submitList(buildDisplayRows(newItems));
     }
 
-    /** 把流水行展开为 [日期头, 行, ...]（行已按时间倒序，日期变化即新的一天） */
+    /** 把流水行展开为 [日期头, 行, ...]；日期头带当日小计（单数 + 净额） */
     private List<LedgerItem> buildDisplayRows(List<LedgerItem> items) {
         List<LedgerItem> rows = new ArrayList<>();
         if (items == null) {
             return rows;
         }
         String lastDay = "";
-        for (LedgerItem item : items) {
+        int dayCount = 0;
+        long dayNet = 0;
+        for (int i = 0; i < items.size(); i++) {
+            LedgerItem item = items.get(i);
             String day = TimeUtil.formatFull(item.time).substring(0, 10);
             if (!day.equals(lastDay)) {
+                if (!lastDay.isEmpty()) {
+                    rows.add(buildHeader(lastDay, dayCount, dayNet));
+                }
                 lastDay = day;
-                rows.add(new LedgerItem(TYPE_HEADER, 0, day, "", 0, false,
-                        "header_" + day));
+                dayCount = 0;
+                dayNet = 0;
+            }
+            dayCount++;
+            if (!item.deleted) {
+                dayNet += item.amountCents; // 销售为正、进货/支出为负
             }
             rows.add(item);
+            if (i == items.size() - 1) {
+                rows.add(buildHeader(lastDay, dayCount, dayNet));
+            }
         }
         return rows;
+    }
+
+    /** 生成日期头（id 含单数与净额，保证数据变化时 DiffUtil 会刷新它） */
+    private LedgerItem buildHeader(String day, int count, long net) {
+        String subtitle = count + " 单" + (net == 0 ? "" : " · 净 "
+                + (net > 0 ? "+" : "-") + MoneyUtil.toYuan(Math.abs(net)));
+        return new LedgerItem(TYPE_HEADER, 0, day, subtitle, net, false,
+                "header_" + day + "_" + count + "_" + net);
     }
 
     @Override
@@ -113,7 +134,7 @@ public class LedgerAdapter extends ListAdapter<LedgerItem, RecyclerView.ViewHold
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         LedgerItem item = getItem(position);
         if (item.type == TYPE_HEADER) {
-            ((HeaderViewHolder) holder).bind(item.title);
+            ((HeaderViewHolder) holder).bind(item.title, item.subtitle);
             return;
         }
         ((LedgerViewHolder) holder).bind(item);
@@ -125,8 +146,11 @@ public class LedgerAdapter extends ListAdapter<LedgerItem, RecyclerView.ViewHold
             super(textView);
         }
 
-        void bind(String day) {
-            ((TextView) itemView).setText(day);
+        void bind(String day, String subtotal) {
+            TextView dayView = itemView.findViewById(R.id.header_day);
+            TextView subtotalView = itemView.findViewById(R.id.header_subtotal);
+            dayView.setText(day);
+            subtotalView.setText(subtotal);
         }
     }
 

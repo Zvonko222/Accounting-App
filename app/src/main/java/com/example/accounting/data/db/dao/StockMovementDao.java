@@ -31,6 +31,10 @@ public interface StockMovementDao {
     @Query("SELECT * FROM stock_movements WHERE id = :id")
     StockMovement findById(String id);
 
+    /** 数据体检用：全部台账行 */
+    @Query("SELECT * FROM stock_movements")
+    List<StockMovement> listAllForCheck();
+
     // ---- 同步子系统专用（syncStatus: 1=PENDING 3=FAILED） ----
 
     @Query("SELECT * FROM stock_movements WHERE syncStatus IN (1, 3) ORDER BY updatedAt LIMIT :limit")

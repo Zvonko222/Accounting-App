@@ -56,6 +56,10 @@ public interface ProductDao {
     @Update
     void update(Product product);
 
+    /** 数据体检用：全部商品（含未过滤的完整字段） */
+    @Query("SELECT * FROM products WHERE isDeleted = 0 ORDER BY name")
+    List<Product> findByIdForCheckAll();
+
     /** 库存表导出用（一次性全量，含分类名与停用状态） */
     @Query("SELECT p.*, COALESCE(c.name, '') AS categoryName FROM products p "
             + "LEFT JOIN categories c ON p.categoryId = c.id "

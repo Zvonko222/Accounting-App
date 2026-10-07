@@ -105,6 +105,8 @@ public class SettingsFragment extends Fragment {
         binding.btnExportProfit.setOnClickListener(v -> exportProfitLauncher.launch(
                 "profit_report_" + TimeUtil.formatForFileName(System.currentTimeMillis()) + ".csv"));
 
+        binding.btnDataCheck.setOnClickListener(v -> runDataCheck());
+
         binding.btnExportInventory.setOnClickListener(v -> exportInventoryLauncher.launch(
                 "inventory_" + TimeUtil.formatForFileName(System.currentTimeMillis()) + ".csv"));
 
@@ -214,6 +216,31 @@ public class SettingsFragment extends Fragment {
             text.append("\n").append(getString(R.string.sync_status_pending, pending));
         }
         binding.textSyncStatus.setText(text);
+    }
+
+    /** 数据体检：后台对账，弹窗展示报告（只读，不修改任何数据） */
+    private void runDataCheck() {
+        Toast.makeText(requireContext(), R.string.data_check_running, Toast.LENGTH_SHORT).show();
+        ((com.example.accounting.AccountingApp) requireActivity().getApplication())
+                .getDatabaseWriteExecutor().execute(() -> {
+                    com.example.accounting.data.db.AppDatabase db =
+                            ((com.example.accounting.AccountingApp) requireActivity().getApplication())
+                                    .getDatabase();
+                    long lastBackup = ((com.example.accounting.AccountingApp)
+                            requireActivity().getApplication())
+                            .getBackupManager().getLastBackupTime() == null ? 0
+                            : ((com.example.accounting.AccountingApp) requireActivity().getApplication())
+                                    .getBackupManager().getLastBackupTime();
+                    String report = com.example.accounting.data.repository.report.DataCheck
+                            .run(db, lastBackup);
+                    requireActivity().runOnUiThread(() ->
+                            new com.google.android.material.dialog.MaterialAlertDialogBuilder(
+                                    requireContext())
+                                    .setTitle(R.string.data_check)
+                                    .setMessage(report)
+                                    .setPositiveButton(R.string.close, null)
+                                    .show());
+                });
     }
 
     /** 同步状态详情：各表待同步行数 + 手动重传提示 */

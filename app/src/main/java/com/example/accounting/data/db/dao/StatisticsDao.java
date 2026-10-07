@@ -35,7 +35,12 @@ public interface StatisticsDao {
      */
     /** 热销榜（销售额扣减退货冲减的按行比例分摊，口径与分类榜一致） */
     @Query("SELECT si.productName AS productName, "
-            + "COALESCE(SUM(si.quantityMilli), 0) AS quantityMilli, "
+            + "COALESCE(SUM(si.quantityMilli + COALESCE("
+            + "(SELECT CAST(ROUND(si.quantityMilli * 1.0 * oe.differenceCents "
+            + "  / s.totalAmountCents) AS INTEGER) "
+            + "  FROM order_events oe "
+            + "  WHERE oe.saleId = s.id AND oe.eventType = 1 "
+            + "  AND s.totalAmountCents > 0), 0)), 0) AS quantityMilli, "
             + "COALESCE(SUM(si.lineTotalCents + COALESCE("
             + "(SELECT CAST(ROUND(si.lineTotalCents * 1.0 * oe.differenceCents "
             + "  / s.totalAmountCents) AS INTEGER) "

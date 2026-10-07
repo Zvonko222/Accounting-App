@@ -263,6 +263,8 @@
     <string name="restore_invalid_file">备份文件无效或已损坏</string>
     <string name="restore_incompatible">备份版本不兼容，请使用同一大版本的备份</string>
     <string name="profit_report_export">导出利润表（CSV，近 90 天）</string>
+    <string name="data_check_running">正在体检…</string>
+    <string name="data_check">数据体检（库存对账/负库存/备份）</string>
     <string name="inventory_export">导出商品库存表（CSV）</string>
     <string name="csv_export">导出销售流水（CSV）</string>
     <string name="csv_done">导出完成</string>
