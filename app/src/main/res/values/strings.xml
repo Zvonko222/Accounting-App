@@ -30,6 +30,7 @@
     <string name="order_event_saved">订单事件已记录</string>
     <string name="order_exchange_original">选择原商品</string>
     <string name="order_exchange_replacement">选择换入商品</string>
+    <string name="exchange_stock_warning">替换品库存不足：当前 %1$s，本次需要 %2$s。继续将产生负库存（先换后补）。确定继续吗？</string>
     <string name="order_exchange_price">替换品单价（元，可改）</string>
     <string name="order_exchange_quantity">换货数量</string>
     <string name="deliver_confirm">确认这单已交付？金额 </string>
@@ -269,7 +270,15 @@
     <string name="profit_report_export">导出利润表（CSV，近 90 天）</string>
     <string name="data_check_running">正在体检…</string>
     <string name="profit_range_title">导出利润表（选择区间）</string>
-    <string name="data_check">数据体检（库存对账/负库存/备份）</string>
+    <string name="store_id_section">店铺标识（多设备共享账本）</string>
+    <string name="store_id_hint">多台设备共享同一本账：在新设备上"导入"主设备复制的标识即可同步同一本账。导入会替换本机标识，建议在新设备录入数据前操作。</string>
+    <string name="store_id_copy">复制标识</string>
+    <string name="store_id_import">导入标识</string>
+    <string name="store_id_copied">已复制到剪贴板，可粘贴发给另一台设备</string>
+    <string name="store_id_imported">店铺标识已导入，返回云同步页立即同步</string>
+    <string name="store_id_import_title">导入店铺标识</string>
+    <string name="store_id_invalid">标识格式不正确</string>
+<string name="data_check">数据体检（库存对账/负库存/备份）</string>
     <string name="inventory_export">导出商品库存表（CSV）</string>
     <string name="csv_export">导出销售流水（CSV）</string>
     <string name="csv_done">导出完成</string>

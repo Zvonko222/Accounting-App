@@ -442,6 +442,30 @@ public class SyncEngine {
         return map;
     }
 
+    /** 读取（必要时生成）设备标识：多设备共享账本时作为钥匙复制到另一台设备 */
+    public static String getDeviceId(android.content.Context context) {
+        AppDatabase db = AppDatabase.getInstance(context);
+        String deviceId = db.syncStateDao().getValue(KEY_DEVICE_ID);
+        if (deviceId == null || deviceId.isEmpty()) {
+            deviceId = UUID.randomUUID().toString();
+            SyncState state = new SyncState();
+            state.key = KEY_DEVICE_ID;
+            state.value = deviceId;
+            state.updatedAt = System.currentTimeMillis();
+            db.syncStateDao().put(state);
+        }
+        return deviceId;
+    }
+
+    /** 导入另一台设备的店铺标识（多设备共享账本）：仅建议在录入数据前操作 */
+    public static void importDeviceId(android.content.Context context, String deviceId) {
+        SyncState state = new SyncState();
+        state.key = KEY_DEVICE_ID;
+        state.value = deviceId.trim();
+        state.updatedAt = System.currentTimeMillis();
+        AppDatabase.getInstance(context).syncStateDao().put(state);
+    }
+
     // ---------------- 给设置页读取状态用的键名 ----------------
 
     public static String keyServerUrl() {

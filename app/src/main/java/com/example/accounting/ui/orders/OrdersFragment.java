@@ -21,6 +21,7 @@ import com.example.accounting.data.db.entity.Sale;
 import com.example.accounting.data.db.entity.SaleItem;
 import com.example.accounting.util.MoneyUtil;
 import com.example.accounting.util.QuantityUtil;
+import com.example.accounting.data.db.dao.SaleWithItems;
 import com.example.accounting.data.db.dao.SaleWithSummary;
 import com.example.accounting.databinding.FragmentOrdersBinding;
 import com.example.accounting.data.repository.SaveCallback;
@@ -188,20 +189,48 @@ public class OrdersFragment extends Fragment implements OrderAdapter.Listener {
                         return;
                     }
                     Long price = MoneyUtil.parseYuan(replacementPrice.getText().toString());
-                    viewModel.recordExchange(order.sale.id, original.productId, replacement.id,
-                            quantityMilli, price, note.getText().toString(), new SaveCallback() {
-                                @Override public void onSuccess() {
-                                    Toast.makeText(requireContext(), R.string.order_event_saved,
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                                @Override public void onError(String message) {
-                                    Toast.makeText(requireContext(), message,
-                                            Toast.LENGTH_LONG).show();
-                                }
-                            });
+                    if (price == null || price < 0) {
+                        replacementPrice.setError(getString(R.string.amount_required));
+                        return;
+                    }
+                    // 替换品库存校验：换出会扣减替换品库存，不足时明确确认（可产生负库存）
+                    long afterStock = replacement.stockQuantityMilli - quantityMilli;
+                    if (afterStock < 0) {
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setMessage(getString(R.string.exchange_stock_warning,
+                                        QuantityUtil.toDisplay(replacement.stockQuantityMilli),
+                                        QuantityUtil.toDisplay(quantityMilli)))
+                                .setPositiveButton(R.string.confirm, (d2, w2) ->
+                                        doExchange(order, original, replacement,
+                                                quantityMilli, price, note.getText().toString()))
+                                .setNegativeButton(R.string.cancel, null)
+                                .show();
+                        return;
+                    }
+                    doExchange(order, original, replacement, quantityMilli, price,
+                            note.getText().toString());
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    private void doExchange(SaleWithSummary order, com.example.accounting.data.db.entity.SaleItem original,
+                            com.example.accounting.data.db.entity.Product replacement,
+                            long quantityMilli, Long price, String note) {
+        viewModel.recordExchange(order.sale.id, original.productId, replacement.id,
+                quantityMilli, price, note, new SaveCallback() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(requireContext(), R.string.order_event_saved,
+                                Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(requireContext(), message,
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     private void showEventNote(SaleWithSummary order, int eventType, String initialNote) {

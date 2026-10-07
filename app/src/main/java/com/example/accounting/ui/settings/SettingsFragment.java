@@ -150,6 +150,31 @@ public class SettingsFragment extends Fragment {
         binding.btnOpenSync.setOnClickListener(v ->
                 com.example.accounting.ui.sync.SyncActivity.start(requireContext()));
 
+        // 店铺标识：显示 / 复制 / 导入（多设备共享账本的钥匙）
+        binding.textStoreId.setText(com.example.accounting.data.sync.SyncEngine
+                .getDeviceId(requireContext()));
+        binding.btnStoreIdCopy.setOnClickListener(v -> {
+            android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager) requireContext()
+                            .getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            android.content.ClipData clip = android.content.ClipData.newPlainText("store_id",
+                    binding.textStoreId.getText());
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(requireContext(), R.string.store_id_copied,
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+        binding.btnStoreIdImport.setOnClickListener(v -> showStoreIdImportDialog());
+
+
+        try {
+            String versionName = requireActivity().getPackageManager()
+                    .getPackageInfo(requireContext().getPackageName(), 0).versionName;
+            binding.textAbout.append("\n\n版本 " + versionName);
+        } catch (Exception ignored) {
+        }
+
         viewModel.getLastBackupTime().observe(getViewLifecycleOwner(), this::showLastBackup);
         viewModel.getBackupSummary().observe(getViewLifecycleOwner(), summary -> {
             if (summary != null) binding.textBackupSummary.setText(summary);
@@ -178,6 +203,34 @@ public class SettingsFragment extends Fragment {
                     pendingProfitLabel = labels[which];
                     exportProfitLauncher.launch(
                             "profit_report_" + TimeUtil.formatForFileName(now) + ".csv");
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    /** 导入店铺标识：格式校验 + 警告后写入 */
+    private void showStoreIdImportDialog() {
+        android.view.View dialogView = getLayoutInflater()
+                .inflate(R.layout.dialog_input_quantity, null, false);
+        android.widget.EditText input = dialogView.findViewById(R.id.input_quantity);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setHint(R.string.store_id_section);
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.store_id_import)
+                .setView(dialogView)
+                .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                    String value = String.valueOf(input.getText()).trim();
+                    if (value.length() < 8) {
+                        Toast.makeText(requireContext(),
+                                R.string.store_id_invalid, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    com.example.accounting.data.sync.SyncEngine
+                            .importDeviceId(requireContext(), value);
+                    binding.textStoreId.setText(value);
+                    Toast.makeText(requireContext(),
+                            R.string.store_id_imported, Toast.LENGTH_LONG).show();
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
