@@ -276,12 +276,23 @@ public class SalesFragment extends Fragment implements LedgerAdapter.Listener {
                 .setTitle(R.string.sale_detail)
                 .setView(dialogBinding.getRoot());
 
-        // 未作废的单据提供"修改"与"作废"（作废有二次确认）
+        // 未作废的单据提供"修改/作废/退货"（作废=不算这笔账；退货=算账但货退回）
         if (!detail.sale.isDeleted) {
             builder.setPositiveButton(R.string.btn_modify, (dialog, which) ->
                     SaleEditActivity.startForEdit(requireContext(), detail.sale.id));
-            builder.setNeutralButton(R.string.void_action, (dialog, which) ->
-                    confirmVoidSale(detail.sale.id));
+            if (detail.sale.deliveryStatus != 2) {
+                builder.setNeutralButton(R.string.void_action, (dialog, which) ->
+                        confirmVoidSale(detail.sale.id));
+            } else {
+                // 已交付的单用"退货"（算一笔退货冲减，货回库存），比"作废"语义准确
+                builder.setNeutralButton(R.string.ledger_returned, (dialog, which) ->
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setMessage(R.string.order_return_confirm)
+                                .setPositiveButton(R.string.confirm, (d2, w2) ->
+                                        viewModel.returnSale(detail.sale.id, new SaveToast()))
+                                .setNegativeButton(R.string.cancel, null)
+                                .show());
+            }
         }
         builder.setNegativeButton(R.string.close, null).show();
     }

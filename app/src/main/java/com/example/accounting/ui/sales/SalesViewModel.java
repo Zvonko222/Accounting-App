@@ -211,6 +211,13 @@ public class SalesViewModel extends AndroidViewModel {
         saleRepository.voidSale(saleId, callback);
     }
 
+    /** 整单退货（销售详情弹窗入口）：库存回补 + 差价冲减统计，交易事件记录在案 */
+    public void returnSale(String saleId, SaveCallback callback) {
+        saleRepository.recordOrderEvent(saleId,
+                com.example.accounting.data.db.entity.OrderEvent.TYPE_RETURN, "流水详情退货",
+                callback);
+    }
+
     public void voidPurchase(String purchaseId, SaveCallback callback) {
         purchaseRepository.voidPurchase(purchaseId, callback);
     }

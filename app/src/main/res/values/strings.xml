@@ -56,6 +56,7 @@
     <string name="void_action">作废</string>
     <string name="void_sale_confirm">作废后这笔销售的库存会冲回，账目不可再修改。确定作废吗？</string>
     <string name="void_purchase_confirm">作废后这笔进货冲减库存。确定作废吗？</string>
+    <string name="order_return_confirm">确认整单退货？货将回补库存，销售额扣减本单金额</string>
     <string name="ledger_returned">已退货</string>
     <string name="ledger_pending_delivery">待交付</string>
     <string name="voided">已作废</string>

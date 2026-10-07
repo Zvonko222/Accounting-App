@@ -22,6 +22,8 @@ import com.example.accounting.data.sync.SyncEngine;
 import com.example.accounting.databinding.FragmentSettingsBinding;
 import com.example.accounting.util.AppRestarter;
 import com.example.accounting.util.TimeUtil;
+
+import java.util.List;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 /**
@@ -144,83 +146,14 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // ---- 云同步 ----
-        viewModel.getConfigUrl().observe(getViewLifecycleOwner(), url -> {
-            if (binding.inputSyncUrl.getText() == null
-                    || binding.inputSyncUrl.getText().length() == 0) {
-                binding.inputSyncUrl.setText(url);
-            }
-        });
-        viewModel.getConfigKey().observe(getViewLifecycleOwner(), key -> {
-            if (binding.inputSyncKey.getText() == null
-                    || binding.inputSyncKey.getText().length() == 0) {
-                binding.inputSyncKey.setText(key);
-            }
-        });
-
-        binding.btnSyncSave.setOnClickListener(v -> {
-            String url = String.valueOf(binding.inputSyncUrl.getText()).trim();
-            String key = String.valueOf(binding.inputSyncKey.getText()).trim();
-            viewModel.saveSyncConfig(requireContext(),
-                    url.isEmpty() ? null : url, key.isEmpty() ? null : key);
-            Toast.makeText(requireContext(), R.string.sync_saved, Toast.LENGTH_SHORT).show();
-        });
-
-        binding.btnSyncNow.setOnClickListener(v -> {
-            Toast.makeText(requireContext(), R.string.sync_now, Toast.LENGTH_SHORT).show();
-            viewModel.syncNow(requireContext(), new com.example.accounting.data.sync.SyncEngine.Callback() {
-                @Override
-                public void onDone(String message) {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
-                }
-
-                @Override
-                public void onError(String message) {
-                    Toast.makeText(requireContext(),
-                            getString(R.string.backup_failed) + "：" + message,
-                            Toast.LENGTH_LONG).show();
-                }
-            });
-        });
-
-        // 状态行：上次同步时间 + 错误 + 待上行行数
-        binding.textSyncStatus.setOnClickListener(v -> showSyncDetailDialog());
-        viewModel.getPendingDetail().observe(getViewLifecycleOwner(), detail -> {
-            if (detail != null && !detail.isEmpty()) {
-                binding.textSyncStatus.append("\n" + detail.trim());
-            }
-        });
-
-        viewModel.getLastSyncAt().observe(getViewLifecycleOwner(), this::updateSyncStatusText);
-        viewModel.getLastSyncError().observe(getViewLifecycleOwner(), s -> updateSyncStatusText(null));
-        viewModel.getPendingCount().observe(getViewLifecycleOwner(), c -> updateSyncStatusText(null));
+        // 云同步入口：整页在 SyncActivity（配置/状态/明细）
+        binding.btnOpenSync.setOnClickListener(v ->
+                com.example.accounting.ui.sync.SyncActivity.start(requireContext()));
 
         viewModel.getLastBackupTime().observe(getViewLifecycleOwner(), this::showLastBackup);
         viewModel.getBackupSummary().observe(getViewLifecycleOwner(), summary -> {
             if (summary != null) binding.textBackupSummary.setText(summary);
         });
-    }
-
-    /** 三个 LiveData 任一变化都重建状态行文本 */
-    private void updateSyncStatusText(Long ignored) {
-        Long lastAt = viewModel.getLastSyncAt().getValue();
-        String error = viewModel.getLastSyncError().getValue();
-        Integer pending = viewModel.getPendingCount().getValue();
-
-        StringBuilder text = new StringBuilder();
-        if (lastAt == null) {
-            text.append(getString(R.string.sync_last_never));
-        } else {
-            text.append(getString(R.string.sync_last_time,
-                    TimeUtil.formatFull(lastAt)));
-        }
-        if (error != null && !error.isEmpty()) {
-            text.append("\n").append(getString(R.string.sync_last_error, error));
-        }
-        if (pending != null && pending > 0) {
-            text.append("\n").append(getString(R.string.sync_status_pending, pending));
-        }
-        binding.textSyncStatus.setText(text);
     }
 
     /** 利润表区间选择：本月/上月/近90天/本年 → 选保存位置 → 导出 */
@@ -263,8 +196,12 @@ public class SettingsFragment extends Fragment {
                             .getBackupManager().getLastBackupTime() == null ? 0
                             : ((com.example.accounting.AccountingApp) requireActivity().getApplication())
                                     .getBackupManager().getLastBackupTime();
+                    // 待交付超期：超过 3 天未交付
+                    long cutoff = System.currentTimeMillis() - 3L * 24 * 60 * 60 * 1000;
+                    List<com.example.accounting.data.db.entity.Sale> overdue =
+                            db.saleDao().listPendingDeliveryOverdue(cutoff);
                     String report = com.example.accounting.data.repository.report.DataCheck
-                            .run(db, lastBackup);
+                            .run(db, lastBackup, overdue);
                     requireActivity().runOnUiThread(() ->
                             new com.google.android.material.dialog.MaterialAlertDialogBuilder(
                                     requireContext())
@@ -308,7 +245,6 @@ public class SettingsFragment extends Fragment {
         super.onResume();
         viewModel.reloadLastBackupTime();
         viewModel.reloadBackupSummary();
-        viewModel.loadSyncConfig(requireContext());
     }
 
     private void showLastBackup(Long lastBackupMillis) {

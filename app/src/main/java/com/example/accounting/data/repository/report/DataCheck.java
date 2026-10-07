@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import com.example.accounting.data.db.AppDatabase;
 import com.example.accounting.data.db.dao.StockMovementDao;
 import com.example.accounting.data.db.entity.Product;
+import com.example.accounting.util.MoneyUtil;
 import com.example.accounting.util.QuantityUtil;
 
 import java.util.HashMap;
@@ -27,8 +28,13 @@ public final class DataCheck {
     private DataCheck() {
     }
 
-    /** @return 多行体检报告文本（直接展示在弹窗里） */
-    public static String run(@NonNull AppDatabase db, long lastBackupAt) {
+    /**
+     * @param db 数据库
+     * @param lastBackupAt 上次本机备份时间（0=从未）
+     * @param pendingOverdue 待交付超期单（调用方按 3 天查询），文本由本方法拼接
+     */
+    public static String run(@NonNull AppDatabase db, long lastBackupAt,
+                             @NonNull List<com.example.accounting.data.db.entity.Sale> pendingOverdue) {
         StringBuilder report = new StringBuilder();
         int problems = 0;
 
@@ -82,6 +88,20 @@ public final class DataCheck {
             report.append("· 负库存 ").append(negative).append(" 个商品（先卖后补，建议进货或盘点）：\n");
             report.append(negativeNames);
             problems += negative;
+        }
+
+        // ---- 2.5 待交付超期（外卖/预订超过 3 天未交付） ----
+        if (!pendingOverdue.isEmpty()) {
+            report.append("· 待交付超期 ").append(pendingOverdue.size())
+                  .append(" 单（超过 3 天未交付，尽快联系客户）：\n");
+            int shown = Math.min(pendingOverdue.size(), 3);
+            for (int i = 0; i < shown; i++) {
+                com.example.accounting.data.db.entity.Sale sale = pendingOverdue.get(i);
+                report.append("  - ").append(sale.customerName == null ? "（未留客户）" : sale.customerName)
+                      .append(" ").append(com.example.accounting.util.TimeUtil.formatFull(sale.saleTime))
+                      .append(" ").append(MoneyUtil.toYuan(sale.totalAmountCents)).append("\n");
+            }
+            problems += pendingOverdue.size();
         }
 
         // ---- 3. 备份状态 ----

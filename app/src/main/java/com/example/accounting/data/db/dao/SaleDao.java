@@ -149,6 +149,14 @@ public interface SaleDao {
             "AND s.saleTime BETWEEN :fromMillis AND :toMillis ORDER BY deliveredAt DESC LIMIT 50")
     LiveData<List<SaleWithSummary>> observeDeliveredRecentlyBetween(long fromMillis, long toMillis);
 
+    /** 数据体检用：待交付超期单（超过 cutoffMillis 未交付，排除已退货） */
+    @Query("SELECT * FROM sales WHERE deliveryStatus = 1 AND isDeleted = 0 "
+            + "AND saleTime < :cutoffMillis "
+            + "AND NOT EXISTS (SELECT 1 FROM order_events oe "
+            + "  WHERE oe.saleId = sales.id AND oe.eventType = 1) "
+            + "ORDER BY saleTime")
+    List<Sale> listPendingDeliveryOverdue(long cutoffMillis);
+
     /** 确认交付：状态置已交付 + 记交付时间 + 标记待同步（交付状态也要上云） */
     @Query("UPDATE sales SET deliveryStatus = 2, deliveredAt = :deliveredAt, "
             + "updatedAt = :deliveredAt, syncStatus = 1 WHERE id = :id")

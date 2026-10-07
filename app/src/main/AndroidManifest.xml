@@ -34,6 +34,11 @@
             android:parentActivityName=".ui.main.MainActivity" />
 
         <activity
+            android:name=".ui.sync.SyncActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.main.MainActivity" />
+
+        <activity
             android:name=".ui.orders.OrdersActivity"
             android:exported="false"
             android:parentActivityName=".ui.main.MainActivity" />
