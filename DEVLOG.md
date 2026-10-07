@@ -455,6 +455,19 @@
 
 ---
 
+## 补丁 21 - 详情退货入口 + 数据体检超期 + 云同步独立页 + v1.0
+
+1. **销售详情弹窗加"退货"入口**：已交付的单详情里显示"退货"（整单退：货回库存 + 统计扣减 + 事件轨迹），未交付的单仍用"作废"——语义准确分工。
+2. **数据体检加"待交付超期"**：外卖/预订超过 3 天未交付的单在体检报告里点名（客户/时间/金额，最多列 3 条）。
+3. **云同步独立整页**：`SyncActivity`（服务器配置/立即同步/状态行/各表待同步明细），设置页云同步卡改为单按钮入口；移除设置页内嵌的同步配置与状态 UI（与新页重复）。
+4. **versionName 1.0**。
+
+**Files**：`SalesViewModel/SalesFragment/strings`（退货入口）、`report/DataCheck.java + SaleDao`（超期检查）、`ui/sync/SyncActivity + SyncViewModel`（新）、`activity_sync.xml`（新）、`SettingsFragment/SettingsViewModel/fragment_settings.xml`（入口化）、`AndroidManifest.xml`、`app/build.gradle.kts`。
+
+**How to test（模拟器验证通过）**：已交付订单详情 → 退货 → 确认 → 订单卡红字"已退货 −xx"且详情轨迹新增；设置 → 云同步 → 独立页含配置与立即同步。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。
