@@ -228,6 +228,9 @@
     <string name="month_profit">本月毛利(估)</string>
     <string name="last7_title">近 7 天销售额</string>
     <string name="filter_year">年</string>
+    <string name="filter_month2">本月</string>
+    <string name="filter_last_month2">上月</string>
+    <string name="filter_90days">近 90 天</string>
     <string name="filter_custom_date">指定日期</string>
     <string name="custom_date_invalid">请选择有效的日期范围</string>
     <string name="metric_sales">销售额</string>
@@ -264,6 +267,7 @@
     <string name="restore_incompatible">备份版本不兼容，请使用同一大版本的备份</string>
     <string name="profit_report_export">导出利润表（CSV，近 90 天）</string>
     <string name="data_check_running">正在体检…</string>
+    <string name="profit_range_title">导出利润表（选择区间）</string>
     <string name="data_check">数据体检（库存对账/负库存/备份）</string>
     <string name="inventory_export">导出商品库存表（CSV）</string>
     <string name="csv_export">导出销售流水（CSV）</string>

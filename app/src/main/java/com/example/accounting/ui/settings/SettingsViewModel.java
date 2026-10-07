@@ -78,12 +78,14 @@ public class SettingsViewModel extends AndroidViewModel {
         backupManager.exportSalesCsvTo(destination, callback);
     }
 
-    /** 导出月度利润表：后台执行，完成后记录"上次导出"时间 */
-    public void exportProfitReport(Uri destination, BackupManager.BackupCallback callback) {
+    /** 导出利润表：后台执行（区间由界面按用户所选决定），完成后记录"上次导出"时间 */
+    public void exportProfitReport(Uri destination, long fromMillis, String rangeLabel,
+                                   BackupManager.BackupCallback callback) {
         ((AccountingApp) getApplication()).getDatabaseWriteExecutor().execute(() -> {
             try {
                 int rows = com.example.accounting.data.repository.report.ProfitReportExporter
-                        .export(getDatabase(), destination, getApplication());
+                        .export(getDatabase(), destination, getApplication(),
+                                fromMillis, rangeLabel);
                 com.example.accounting.data.sync.SyncEngine.saveConfig(
                         getApplication(), KEY_LAST_EXPORT, String.valueOf(System.currentTimeMillis()));
                 new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->

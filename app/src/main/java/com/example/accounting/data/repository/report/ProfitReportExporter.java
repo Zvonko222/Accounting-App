@@ -18,24 +18,24 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * 月度利润表导出：近 90 天按日汇总
+ * 利润表导出：按日汇总
  * （销售额[已扣退货] / 毛利[快照成本口径] / 支出[进货+其他] / 当日净结余），
  * 顶部附期间合计行。写 CSV（UTF-8 BOM，Excel 直开）。
+ * 区间由调用方决定（本月/上月/近90天/本年）。
  *
  * 与备份的区别：这是给"人看/对账"的报表；备份是给"恢复数据"用的整库文件。
  */
 public final class ProfitReportExporter {
 
-    private static final long NINETY_DAYS = 90L * 24 * 60 * 60 * 1000;
-
     private ProfitReportExporter() {
     }
 
-    /** 导出结果：写入行数（供提示） */
+    /** @return 导出行数（供提示） */
     public static int export(AppDatabase db, @NonNull Uri destination,
-                             @NonNull Context context) throws Exception {
+                             @NonNull Context context, long fromMillis,
+                             @NonNull String rangeLabel) throws Exception {
         StatisticsDao dao = db.statisticsDao();
-        long from = System.currentTimeMillis() - NINETY_DAYS;
+        long from = fromMillis;
 
         List<DailySales> sales = dao.listDailySalesSince(from);
         List<DailySales> profit = dao.listDailyProfitSince(from);
@@ -57,7 +57,7 @@ public final class ProfitReportExporter {
 
         StringBuilder csv = new StringBuilder();
         csv.append('\uFEFF');
-        csv.append("利润表（近90天按日）\n");
+        csv.append("利润表（").append(rangeLabel).append("，按日）\n");
         csv.append("日期,销售额(元),毛利(元),支出(元),当日净结余(元)\n");
 
         for (Map.Entry<String, long[]> entry : byDay.entrySet()) {

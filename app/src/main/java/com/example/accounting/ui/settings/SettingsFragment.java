@@ -33,6 +33,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
  */
 public class SettingsFragment extends Fragment {
 
+    /** 利润表导出：用户所选的统计区间（区间弹窗记录，SAF 回调使用） */
+    private long pendingProfitFrom = 0;
+    private String pendingProfitLabel = "";
+
     private FragmentSettingsBinding binding;
     private SettingsViewModel viewModel;
 
@@ -58,8 +62,9 @@ public class SettingsFragment extends Fragment {
     private final ActivityResultLauncher<String> exportProfitLauncher =
             registerForActivityResult(new ActivityResultContracts.CreateDocument("text/csv"),
                     uri -> {
-                        if (uri != null) {
-                            viewModel.exportProfitReport(uri, new BackupToast());
+                        if (uri != null && pendingProfitFrom > 0) {
+                            viewModel.exportProfitReport(uri, pendingProfitFrom,
+                                    pendingProfitLabel, new BackupToast());
                         }
                     });
 
@@ -102,8 +107,8 @@ public class SettingsFragment extends Fragment {
                 "accounting_backup_" + TimeUtil.formatForFileName(System.currentTimeMillis())
                         + ".db"));
 
-        binding.btnExportProfit.setOnClickListener(v -> exportProfitLauncher.launch(
-                "profit_report_" + TimeUtil.formatForFileName(System.currentTimeMillis()) + ".csv"));
+        // 利润表导出：先选区间，再选保存位置
+        binding.btnExportProfit.setOnClickListener(v -> showProfitRangePicker());
 
         binding.btnDataCheck.setOnClickListener(v -> runDataCheck());
 
@@ -216,6 +221,33 @@ public class SettingsFragment extends Fragment {
             text.append("\n").append(getString(R.string.sync_status_pending, pending));
         }
         binding.textSyncStatus.setText(text);
+    }
+
+    /** 利润表区间选择：本月/上月/近90天/本年 → 选保存位置 → 导出 */
+    private void showProfitRangePicker() {
+        String[] labels = {
+                getString(R.string.filter_month2),
+                getString(R.string.filter_last_month2),
+                getString(R.string.filter_90days),
+                getString(R.string.filter_year)};
+        long now = System.currentTimeMillis();
+        long[] froms = {
+                com.example.accounting.util.TimeUtil.monthStart(),
+                com.example.accounting.util.TimeUtil.lastMonthStart(),
+                com.example.accounting.util.TimeUtil.daysAgoStart(89),
+                com.example.accounting.util.TimeUtil.yearStart()};
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.profit_range_title)
+                .setItems(labels, (dialog, which) -> {
+                    // 记住所选区间：SAF 保存位置回调里用它作为统计起点
+                    pendingProfitFrom = froms[which];
+                    pendingProfitLabel = labels[which];
+                    exportProfitLauncher.launch(
+                            "profit_report_" + TimeUtil.formatForFileName(now) + ".csv");
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     /** 数据体检：后台对账，弹窗展示报告（只读，不修改任何数据） */

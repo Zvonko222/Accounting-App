@@ -146,8 +146,22 @@ public class SaleRepository {
                             }
                         }
                     }
+                    boolean partialReturn = false;
                     if (eventType == OrderEvent.TYPE_RETURN) {
-                        event.differenceCents = -sale.totalAmountCents;
+                        if (originalItem != null) {
+                            // 部分退货：只退指定商品行（数量默认整行，可改小）
+                            long retQty = quantityMilli > 0
+                                    ? Math.min(quantityMilli, originalItem.quantityMilli)
+                                    : originalItem.quantityMilli;
+                            long refund = originalItem.unitPriceCents * retQty / 1000;
+                            event.quantityMilli = retQty;
+                            event.originalAmountCents = refund;
+                            event.amountCents = refund;
+                            event.differenceCents = -refund;
+                            partialReturn = true;
+                        } else {
+                            event.differenceCents = -sale.totalAmountCents;
+                        }
                     } else if (eventType == OrderEvent.TYPE_EXCHANGE
                             && originalItem != null && replacementProductId != null) {
                         Product replacement = productDao.findById(replacementProductId);
@@ -163,18 +177,25 @@ public class SaleRepository {
                     orderEventDao.insert(event);
 
                     if (eventType == OrderEvent.TYPE_RETURN) {
-                        // 待交付订单退货 = 订单取消：不再出现在"待交付"列表
-                        if (sale.deliveryStatus == 1) {
+                        // 待交付订单整单退货 = 订单取消：不再出现在"待交付"列表
+                        // （部分退货不影响交付状态，单子本身还有剩余商品要交付）
+                        if (!partialReturn && sale.deliveryStatus == 1) {
                             sale.deliveryStatus = 0;
                             sale.markPending();
                             saleDao.update(sale);
                         }
-                        List<SaleItem> items = saleDao.listItems(saleId);
+                        List<SaleItem> items = partialReturn
+                                ? saleDao.listItems(saleId).stream()
+                                    .filter(it -> it.productId.equals(originalProductId))
+                                    .collect(java.util.stream.Collectors.toList())
+                                : saleDao.listItems(saleId);
                         List<StockMovement> movements = new ArrayList<>();
                         for (SaleItem item : items) {
                             Product product = productDao.findById(item.productId);
                             if (product == null) continue;
-                            product.stockQuantityMilli += item.quantityMilli;
+                            long restoreQty = partialReturn
+                                    ? event.quantityMilli : item.quantityMilli;
+                            product.stockQuantityMilli += restoreQty;
                             product.markPending();
                             productDao.update(product);
 
@@ -183,10 +204,10 @@ public class SaleRepository {
                             movement.initTimestamps();
                             movement.productId = product.id;
                             movement.changeType = StockMovement.TYPE_RETURN_SALE;
-                            movement.changeQuantityMilli = item.quantityMilli;
+                            movement.changeQuantityMilli = restoreQty;
                             movement.relatedSaleId = saleId;
                             movement.movementTime = now;
-                            movement.note = "订单退货回补";
+                            movement.note = partialReturn ? "部分退货回补" : "订单退货回补";
                             movements.add(movement);
                         }
                         if (!movements.isEmpty()) {
