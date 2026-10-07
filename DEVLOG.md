@@ -430,6 +430,18 @@
 
 ---
 
+## 补丁 19 - 数据体检 + 日期头小计 + 热销榜销量扣退货
+
+1. **数据体检**（设置页新按钮）：库存恒等式逐商品对账（当前库存 = 期初 + Σ台账，不一致点名商品与差额）、负库存清点、备份状态。只读不写。
+2. **流水日期头显示当日小计**：每天标题行显示"N 单 · 净 +¥xx"（作废单不计入净额）。
+3. **热销榜销量也扣退货**（与金额同口径的比例分摊）。
+
+**Files**：`report/DataCheck.java`（新）、`ProductDao/StockMovementDao`（体检查询）、`LedgerAdapter/item_ledger_header.xml`（小计）、`StatisticsDao`（销量扣减）、`SettingsFragment/fragment_settings.xml`、`strings.xml`。
+
+**How to test**：设置 → 数据体检 → 报告弹窗；流水页看每日标题右侧小计。
+
+---
+
 ## 尚未实现（按你的指示裁剪）
 
 - **Phase 9–12（云同步 / WorkManager 同步任务 / ASP.NET Core 后端 / 增量同步）**：你明确"这是本地记账软件，重点定期备份"。数据库层的同步列组（9 列）已全部就位，`SyncStatus` 常量已定义，未来接同步子系统**不需要改任何表结构**，只需新增 `data/sync/` 包。
