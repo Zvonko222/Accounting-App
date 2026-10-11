@@ -74,6 +74,10 @@ dependencies {
     // 不依赖 Google 服务框架（国产机型可用），符合 local-first 原则
     implementation(libs.mlkit.text.chinese)
 
+    // 店铺标识二维码：zxing 生成（纯 Java）+ ML Kit 条码识别（从图片离线解码）
+    implementation(libs.barcode.scanning)
+    implementation(libs.barcode.scanning.zxing)
+
     // 读取照片 EXIF 旋转信息（拍照导入用，官方小库）
     implementation(libs.exifinterface)
 

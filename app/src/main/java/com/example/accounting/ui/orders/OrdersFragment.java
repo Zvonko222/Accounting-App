@@ -147,8 +147,14 @@ public class OrdersFragment extends Fragment implements OrderAdapter.Listener {
             Toast.makeText(requireContext(), R.string.empty_list, Toast.LENGTH_SHORT).show();
             return;
         }
+        // 选品带库存显示：避免换到没货的替换品
         String[] names = new String[products.size()];
-        for (int i = 0; i < products.size(); i++) names[i] = products.get(i).name;
+        for (int i = 0; i < products.size(); i++) {
+            Product product = products.get(i);
+            names[i] = product.name + "（库存 "
+                    + com.example.accounting.util.QuantityUtil.toDisplay(product.stockQuantityMilli)
+                    + product.unit + "）";
+        }
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.order_exchange_replacement)
                 .setItems(names, (dialog, which) -> showExchangeDetails(order, original,

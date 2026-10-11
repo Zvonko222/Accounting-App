@@ -272,7 +272,11 @@
     <string name="profit_range_title">导出利润表（选择区间）</string>
     <string name="store_id_section">店铺标识（多设备共享账本）</string>
     <string name="store_id_hint">多台设备共享同一本账：在新设备上"导入"主设备复制的标识即可同步同一本账。导入会替换本机标识，建议在新设备录入数据前操作。</string>
-    <string name="store_id_copy">复制标识</string>
+    <string name="store_id_qr_show">出示二维码</string>
+    <string name="store_id_qr_import">扫图片二维码</string>
+    <string name="store_id_qr_title">店铺标识二维码</string>
+    <string name="store_id_qr_not_found">图片中没有识别到二维码</string>
+<string name="store_id_copy">复制标识</string>
     <string name="store_id_import">导入标识</string>
     <string name="store_id_copied">已复制到剪贴板，可粘贴发给另一台设备</string>
     <string name="store_id_imported">店铺标识已导入，返回云同步页立即同步</string>

@@ -27,6 +27,88 @@ public class SyncActivity extends AppCompatActivity {
         context.startActivity(new android.content.Intent(context, SyncActivity.class));
     }
 
+    /** 从相册图片识别店铺标识二维码 */
+    private final androidx.activity.result.ActivityResultLauncher<String> qrImageLauncher =
+            registerForActivityResult(
+                    new androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+                    uri -> {
+                        if (uri != null) {
+                            importStoreIdFromImage(uri);
+                        }
+                    });
+
+    /** 弹窗展示店铺标识二维码（主设备出示，新设备用任意相机/识别工具扫描） */
+    private void showStoreQr() {
+        String storeId = com.example.accounting.data.sync.SyncEngine
+                .getDeviceId(getApplicationContext());
+        android.graphics.Bitmap qr = com.example.accounting.util.QrCodeUtil
+                .generate(storeId, 512);
+        if (qr == null) {
+            Toast.makeText(this, R.string.store_id_invalid, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        android.widget.ImageView imageView = new android.widget.ImageView(this);
+        imageView.setImageBitmap(qr);
+        imageView.setPadding(24, 24, 24, 24);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.store_id_qr_title)
+                .setView(imageView)
+                .setPositiveButton(R.string.close, null)
+                .show();
+    }
+
+    /** 从相册图片解码店铺标识二维码（ML Kit 条码识别，离线） */
+    private void importStoreIdFromImage(android.net.Uri imageUri) {
+        com.google.mlkit.vision.barcode.BarcodeScanner scanner =
+                com.google.mlkit.vision.barcode.BarcodeScanning.getClient(
+                        new com.google.mlkit.vision.barcode.BarcodeScannerOptions.Builder()
+                                .setBarcodeFormats(
+                                        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE)
+                                .build());
+        try {
+            android.graphics.BitmapFactory.Options options =
+                    new android.graphics.BitmapFactory.Options();
+            options.inSampleSize = 1;
+            android.graphics.Bitmap image = android.graphics.BitmapFactory.decodeStream(
+                    getContentResolver().openInputStream(imageUri), null, options);
+            if (image == null) {
+                Toast.makeText(this, R.string.store_id_invalid, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            com.google.mlkit.vision.common.InputImage inputImage =
+                    com.google.mlkit.vision.common.InputImage.fromBitmap(image, 0);
+            scanner.process(inputImage)
+                    .addOnSuccessListener(barcodes -> {
+                        scanner.close();
+                        image.recycle();
+                        if (barcodes.isEmpty()) {
+                            Toast.makeText(this, R.string.store_id_qr_not_found,
+                                    Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        String value = barcodes.get(0).getRawValue();
+                        if (value == null || value.trim().length() < 8) {
+                            Toast.makeText(this, R.string.store_id_invalid,
+                                    Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        com.example.accounting.data.sync.SyncEngine
+                                .importDeviceId(getApplicationContext(), value.trim());
+                        Toast.makeText(this, R.string.store_id_imported,
+                                Toast.LENGTH_LONG).show();
+                        viewModel.loadSyncConfig();
+                    })
+                    .addOnFailureListener(e -> {
+                        scanner.close();
+                        image.recycle();
+                        Toast.makeText(this, R.string.store_id_qr_not_found,
+                                Toast.LENGTH_LONG).show();
+                    });
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.store_id_invalid, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,6 +139,12 @@ public class SyncActivity extends AppCompatActivity {
             viewModel.saveSyncConfig(url.isEmpty() ? null : url, key.isEmpty() ? null : key);
             Toast.makeText(this, R.string.sync_saved, Toast.LENGTH_SHORT).show();
         });
+
+        // 店铺标识二维码：生成展示 / 从图片识别导入
+        binding.btnQrShow.setOnClickListener(v -> showStoreQr());
+        binding.btnQrImport.setOnClickListener(v -> qrImageLauncher.launch("image/*"));
+        viewModel.getPendingDetail().observe(this, detail ->
+                binding.textSyncDetail.setText(detail == null ? "" : detail.trim()));
 
         binding.btnSyncNow.setOnClickListener(v -> {
             Toast.makeText(this, R.string.sync_now, Toast.LENGTH_SHORT).show();
